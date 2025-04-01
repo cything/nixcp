@@ -1,19 +1,20 @@
 #![feature(let_chains)]
 
+use std::path::Path;
 use std::process::Command;
 use std::sync::mpsc;
-use std::path::Path;
-use std::sync::{Mutex, Arc, atomic::{AtomicUsize, Ordering}};
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicUsize, Ordering},
+};
 
+use clap::Parser;
 use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use tokio::sync::Semaphore;
-use clap::Parser;
 
-const UPSTREAM_CACHES: &'static [&'static str] = &[
-    "https://cache.nixos.org",
-];
+const UPSTREAM_CACHES: &'static [&'static str] = &["https://cache.nixos.org"];
 
 // nix path-info --derivation --json
 #[derive(Debug, Serialize, Deserialize)]
@@ -112,7 +113,13 @@ async fn main() {
 
     println!("spawning check_upstream");
     handles.push(tokio::spawn(async move {
-        check_upstream(store_paths, cacheable_tx, cli.upstream_checker_concurrency, upstream_caches).await;
+        check_upstream(
+            store_paths,
+            cacheable_tx,
+            cli.upstream_checker_concurrency,
+            upstream_caches,
+        )
+        .await;
     }));
 
     println!("spawning uploader");
@@ -127,7 +134,12 @@ async fn main() {
 }
 
 // filter out store paths that exist in upstream caches
-async fn check_upstream(store_paths: Vec<String>, cacheable_tx: mpsc::Sender<String>, concurrency: u8, upstream_caches: Vec<String>) {
+async fn check_upstream(
+    store_paths: Vec<String>,
+    cacheable_tx: mpsc::Sender<String>,
+    concurrency: u8,
+    upstream_caches: Vec<String>,
+) {
     let concurrent = Semaphore::new(concurrency.into());
     for store_path in store_paths {
         let _ = concurrent.acquire().await.unwrap();
@@ -152,7 +164,9 @@ async fn check_upstream(store_paths: Vec<String>, cacheable_tx: mpsc::Sender<Str
                     .await
                     .map(|x| x.status());
 
-                if let Ok(res_status) = res_status && res_status.is_success() {
+                if let Ok(res_status) = res_status
+                    && res_status.is_success()
+                {
                     debug!("{} was a hit upstream: {}", store_path, upstream);
                     hit = true;
                     break;
@@ -200,7 +214,7 @@ async fn uploader(cacheable_rx: mpsc::Receiver<String>, binary_cache: String, co
                 handle.await.unwrap();
             }
             println!("uploaded {} paths", upload_count.load(Ordering::Relaxed));
-            
+
             let failures = failures.lock().unwrap();
             if !failures.is_empty() {
                 println!("failed to upload these paths: ");
