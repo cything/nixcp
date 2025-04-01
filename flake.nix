@@ -1,18 +1,26 @@
 {
-  description = "Description for the project";
+  description = "nixcp flake";
 
   inputs = {
-    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     crane.url = "github:ipetkov/crane";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = inputs@{ flake-parts, crane, ... }:
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin" ];
-      perSystem = { config, self', inputs', pkgs, system, ... }:
+  outputs = inputs@{ nixpkgs, flake-utils, crane, ... }:
+    flake-utils.lib.eachDefaultSystem (system:
       let
-        craneLib = crane.mkLib pkgs;
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [
+            (import inputs.rust-overlay)
+          ];
+        };
+        craneLib = (crane.mkLib pkgs).overrideToolchain(p: p.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml);
       in
       {
         devShells.default = pkgs.mkShell {
@@ -34,6 +42,6 @@
             openssl
           ];
         };
-      };
-    };
+      }
+    );
 }
