@@ -20,7 +20,8 @@
             (import inputs.rust-overlay)
           ];
         };
-        craneLib = (crane.mkLib pkgs).overrideToolchain(p: p.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml);
+        toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+        craneLib = (crane.mkLib pkgs).overrideToolchain(_: toolchain);
       in
       {
         devShells.default = pkgs.mkShell {
@@ -29,6 +30,7 @@
           ];
           buildInputs = with pkgs; [
             openssl
+            toolchain
           ];
         };
 
