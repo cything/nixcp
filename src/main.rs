@@ -82,15 +82,15 @@ struct Cli {
     upstream_cache: Vec<String>,
 
     /// Concurrent upstream cache checkers
-    #[arg(long, default_value_t = 50)]
+    #[arg(long, default_value_t = 64)]
     upstream_checker_concurrency: u8,
 
     /// Concurrent uploaders
-    #[arg(long, default_value_t = 10)]
+    #[arg(long, default_value_t = 16)]
     uploader_concurrency: u8,
 
     /// Concurrent nix-store commands to run
-    #[arg(long, default_value_t = 50)]
+    #[arg(long, default_value_t = 128)]
     nix_store_concurrency: u8,
 }
 
