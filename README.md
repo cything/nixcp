@@ -24,3 +24,16 @@ Options:
   -V, --version
           Print version
 ```
+
+## Install with nix
+```
+nix profile install git+https://git.cy7.sh/cy/nixcp.git
+```
+Or run without installing:
+```
+nix run git+https://git.cy7.sh/cy/nixcp.git
+```
+Separate arguments with `--` to pass them through to `nixcp` like so:
+```
+nix run git+https://git.cy7.sh/cy/nixcp.git -- --help
+```
