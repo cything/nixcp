@@ -11,10 +11,9 @@ use std::sync::{
 use clap::Parser;
 use log::{debug, trace};
 use serde::{Deserialize, Serialize};
-use serde_json;
 use tokio::sync::Semaphore;
 
-const UPSTREAM_CACHES: &'static [&'static str] = &["https://cache.nixos.org"];
+const UPSTREAM_CACHES: &[&str] = &["https://cache.nixos.org"];
 
 // nix path-info --derivation --json
 #[derive(Debug, Serialize, Deserialize)]
@@ -117,7 +116,7 @@ async fn main() {
             store_paths,
             cacheable_tx,
             cli.upstream_checker_concurrency,
-            upstream_caches,
+            Arc::new(upstream_caches),
         )
         .await;
     }));
@@ -138,12 +137,15 @@ async fn check_upstream(
     store_paths: Vec<String>,
     cacheable_tx: mpsc::Sender<String>,
     concurrency: u8,
-    upstream_caches: Vec<String>,
+    upstream_caches: Arc<Vec<String>>,
 ) {
     let concurrent = Semaphore::new(concurrency.into());
+
     for store_path in store_paths {
         let _ = concurrent.acquire().await.unwrap();
         let tx = cacheable_tx.clone();
+        let upstream_caches = Arc::clone(&upstream_caches);
+
         tokio::spawn(async move {
             let basename = Path::new(&store_path)
                 .file_name()
@@ -151,11 +153,11 @@ async fn check_upstream(
                 .to_str()
                 .unwrap()
                 .to_string();
-            let hash = basename.split("-").nth(0).unwrap();
+            let hash = basename.split("-").next().unwrap();
 
             let mut hit = false;
-            for upstream in UPSTREAM_CACHES {
-                let mut uri = String::from(*upstream);
+            for upstream in upstream_caches.as_ref() {
+                let mut uri = upstream.clone();
                 uri.push_str(format!("/{}.narinfo", hash).as_str());
 
                 let res_status = reqwest::Client::new()
@@ -197,7 +199,7 @@ async fn uploader(cacheable_rx: mpsc::Receiver<String>, binary_cache: String, co
                 if Command::new("nix")
                     .arg("copy")
                     .arg("--to")
-                    .arg(&binary_cache.to_string())
+                    .arg(&binary_cache)
                     .arg(&path_to_upload)
                     .output()
                     .is_err()
