@@ -30,12 +30,13 @@ struct PathInfo {
 
 impl PathInfo {
     // find derivations related to package
-    async fn from_package(package: &str) -> Vec<Self> {
+    async fn from_package(package: &str, recursive: bool) -> Vec<Self> {
+        let mut args = vec!["path-info", "--derivation", "--json"];
+        if recursive {
+            args.push("--recursive");
+        }
         let path_infos = Command::new("nix")
-            .arg("path-info")
-            .arg("--derivation")
-            .arg("--recursive")
-            .arg("--json")
+            .args(args)
             .arg(package)
             .output()
             .await
@@ -81,8 +82,12 @@ struct Cli {
     #[arg(long, short)]
     upstream_cache: Vec<String>,
 
+    /// Whether to pass --recursive to nix path-info. Can queue a huge number of paths to upload
+    #[arg(long, short, default_value_t = false)]
+    recursive: bool,
+
     /// Concurrent upstream cache checkers
-    #[arg(long, default_value_t = 64)]
+    #[arg(long, default_value_t = 32)]
     upstream_checker_concurrency: u8,
 
     /// Concurrent uploaders
@@ -90,7 +95,7 @@ struct Cli {
     uploader_concurrency: u8,
 
     /// Concurrent nix-store commands to run
-    #[arg(long, default_value_t = 128)]
+    #[arg(long, default_value_t = 32)]
     nix_store_concurrency: u8,
 }
 
@@ -109,7 +114,7 @@ async fn main() {
     debug!("upstream caches: {:#?}", upstream_caches);
 
     println!("querying nix path-info");
-    let derivations = PathInfo::from_package(package).await;
+    let derivations = PathInfo::from_package(package, cli.recursive).await;
     println!("got {} derivations", derivations.len());
 
     println!("querying nix-store");
