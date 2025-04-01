@@ -23,7 +23,7 @@
         craneLib = (crane.mkLib pkgs).overrideToolchain(p: p.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml);
       in
       {
-        devShells.default = craneLib.devShell {
+        devShells.default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [
             pkg-config
           ];
