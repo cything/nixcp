@@ -42,7 +42,8 @@ impl PathInfo {
             .await
             .expect("path-info failed");
 
-        let path_infos: Vec<PathInfo> = serde_json::from_slice(&path_infos.stdout).unwrap();
+        let path_infos: Vec<PathInfo> = serde_json::from_slice(&path_infos.stdout)
+            .expect("no derivations found for this package");
         debug!("PathInfo's from nix path-info: {:#?}", path_infos);
         path_infos
     }
