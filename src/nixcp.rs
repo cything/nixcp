@@ -72,7 +72,7 @@ impl NixCp {
                     let _permit = permits.acquire().await.unwrap();
 
                     if !path.check_upstream_hit(upstream_caches.as_slice()).await {
-                        tx.send(path.to_string()).await.unwrap();
+                        tx.send(path.absolute_path()).await.unwrap();
                     }
                 })
             });

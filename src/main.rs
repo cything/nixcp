@@ -9,6 +9,7 @@ use nixcp::NixCp;
 mod cli;
 mod nixcp;
 mod path_info;
+mod uploader;
 
 #[derive(Parser, Debug)]
 #[command(version, name = "nixcp")]
@@ -21,21 +22,9 @@ struct Cli {
     to: String,
 
     /// Upstream cache to check against. Can be specified multiple times.
-    /// cache.nixos.org is always included (unless --no-nixos-cache is passed)
+    /// cache.nixos.org is always included
     #[arg(long = "upstream-cache", short)]
     upstream_caches: Vec<String>,
-
-    /// Concurrent upstream cache checkers
-    #[arg(long, default_value_t = 32)]
-    upstream_checker_concurrency: u8,
-
-    /// Concurrent uploaders
-    #[arg(long, default_value_t = 4)]
-    uploader_concurrency: u8,
-
-    /// Concurrent nix-store commands to run
-    #[arg(long, default_value_t = 32)]
-    nix_store_concurrency: u8,
 }
 
 #[derive(Debug, Subcommand)]

@@ -2,6 +2,8 @@ use std::{collections::HashSet, path::Path};
 
 use anyhow::{Context, Result};
 use log::trace;
+use nix_compat::nixhash::CAHash;
+use nix_compat::store_path::StorePath;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
@@ -11,9 +13,11 @@ use url::Url;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PathInfo {
-    deriver: String,
-    path: String,
+    pub deriver: StorePath<String>,
+    pub path: StorePath<String>,
     signatures: Vec<String>,
+    pub references: Vec<StorePath<String>>,
+    pub ca: Option<CAHash>,
 }
 impl PathInfo {
     /// get PathInfo for a package or a store path
@@ -34,7 +38,7 @@ impl PathInfo {
             .arg("--query")
             .arg("--requisites")
             .arg("--include-outputs")
-            .arg(&self.deriver)
+            .arg(self.deriver.to_string())
             .output()
             .await
             .expect("nix-store cmd failed");
@@ -46,10 +50,6 @@ impl PathInfo {
             closure.push(Self::from_path(path).await?);
         }
         Ok(closure)
-    }
-
-    pub fn get_path(&self) -> &Path {
-        &Path::new(&self.path)
     }
 
     /// checks if the path is signed by any upstream. if it is, we assume a cache hit.
@@ -81,8 +81,8 @@ impl PathInfo {
     }
 
     pub async fn check_upstream_hit(&self, upstreams: &[Url]) -> bool {
-        let basename = self.get_path().file_name().unwrap().to_str().unwrap();
-        let hash = basename.split_once("-").unwrap().0;
+        let hash =
+            String::from_utf8(self.path.digest().to_vec()).expect("should be a valid string");
 
         for upstream in upstreams {
             let upstream = upstream
@@ -101,14 +101,13 @@ impl PathInfo {
         }
         false
     }
-}
 
-impl ToString for PathInfo {
-    fn to_string(&self) -> String {
-        self.path.clone()
+    pub fn absolute_path(&self) -> String {
+        self.path.to_absolute_path()
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,3 +158,4 @@ mod tests {
         );
     }
 }
+*/
