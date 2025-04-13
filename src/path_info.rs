@@ -8,7 +8,7 @@ use tokio::process::Command;
 use url::Url;
 
 // nix path-info --derivation --json
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PathInfo {
     deriver: String,
@@ -100,6 +100,12 @@ impl PathInfo {
             }
         }
         false
+    }
+}
+
+impl ToString for PathInfo {
+    fn to_string(&self) -> String {
+        self.path.clone()
     }
 }
 
