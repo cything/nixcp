@@ -14,7 +14,7 @@ use url::Url;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PathInfo {
-    pub deriver: StorePath<String>,
+    pub deriver: Option<StorePath<String>>,
     pub path: StorePath<String>,
     signatures: Vec<String>,
     pub references: Vec<StorePath<String>>,

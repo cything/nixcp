@@ -159,7 +159,7 @@ impl<'a> Uploader<'a> {
             signatures: Vec::new(),
             ca: None,
             system: None,
-            deriver: Some(self.path.deriver.as_ref()),
+            deriver: self.path.deriver.as_ref().map(|x| x.as_ref()),
             compression: Some("zstd"),
             file_hash: None,
             file_size: None,
