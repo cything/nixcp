@@ -32,6 +32,11 @@ impl PathInfo {
             .await
             .context("`nix path-info` failed for {package}")?;
 
+        trace!(
+            "nix path-info output: {}",
+            String::from_utf8_lossy(&nix_cmd.stdout)
+        );
+
         // nix path-info returns an array with one element
         match serde_json::from_slice::<Vec<_>>(&nix_cmd.stdout)
             .context("parse path info from stdout")
