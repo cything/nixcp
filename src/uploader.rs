@@ -49,8 +49,10 @@ impl<'a> Uploader<'a> {
         nar_info.file_size = Some(nar.len() as u64);
         let mut hasher = Sha256::new();
         hasher.update(&nar);
-        nar_info.file_hash = Some(hasher.finalize().into());
-        let nar_url = self.nar_url(&nar);
+        let hash: [u8; 32] = hasher.finalize().into();
+        let nar_url = self.nar_url(&hash);
+        nar_info.file_hash = Some(hash);
+        debug!("uploading to bucket with key: {nar_url}");
 
         if nar.len() < MULTIPART_CUTOFF {
             let put_object = self
@@ -120,8 +122,6 @@ impl<'a> Uploader<'a> {
             debug!("complete multipart upload: {:#?}", complete_mp_upload);
         }
 
-        nar_info.add_signature(self.signing_key);
-
         self.s3_client
             .put_object()
             .bucket(&self.bucket)
@@ -147,7 +147,7 @@ impl<'a> Uploader<'a> {
         let mut hasher = Sha256::new();
         hasher.update(nar);
         let nar_hash: [u8; 32] = hasher.finalize().into();
-        let nar_info = NarInfo {
+        let mut nar_info = NarInfo {
             flags: narinfo::Flags::empty(),
             store_path: self.path.path.as_ref(),
             nar_hash,
@@ -162,6 +162,8 @@ impl<'a> Uploader<'a> {
             file_size: None,
             url: "",
         };
+        // signature consists of: store_path, nar_hash, nar_size, and references
+        nar_info.add_signature(self.signing_key);
         Ok(nar_info)
     }
 

@@ -2,8 +2,8 @@ use std::collections::HashSet;
 
 use anyhow::{Context, Error, Result};
 use log::{debug, error, trace};
-use nix_compat::nixhash::CAHash;
 use nix_compat::store_path::StorePath;
+use nix_compat::{nixbase32, nixhash::CAHash};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
@@ -97,12 +97,9 @@ impl PathInfo {
     }
 
     pub async fn check_upstream_hit(&self, upstreams: &[Url]) -> bool {
-        let hash =
-            String::from_utf8(self.path.digest().to_vec()).expect("should be a valid string");
-
         for upstream in upstreams {
             let upstream = upstream
-                .join(format!("{hash}/.narinfo").as_str())
+                .join(format!("{}/.narinfo", self.digest()).as_str())
                 .expect("adding <hash>.narinfo should make a valid url");
             let res_status = reqwest::Client::new()
                 .head(upstream.as_str())
@@ -121,8 +118,8 @@ impl PathInfo {
         self.path.to_absolute_path()
     }
 
-    pub fn digest(&self) -> &str {
-        str::from_utf8(self.path.digest()).expect("digest should be valid string")
+    pub fn digest(&self) -> String {
+        nixbase32::encode(self.path.digest())
     }
 }
 
