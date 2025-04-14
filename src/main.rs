@@ -44,11 +44,11 @@ pub struct PushArgs {
     #[arg(long)]
     signing_key: String,
 
-    /// If unspecified, will get it form AWS_DEFAULT_REGION envar or the AWS default
+    /// If unspecified, will get it form AWS_DEFAULT_REGION envar
     #[arg(long)]
     region: Option<String>,
 
-    /// If unspecifed, will get it from AWS_ENDPOINT_URL envar or the AWS default
+    /// If unspecifed, will get it from AWS_ENDPOINT_URL envar
     /// e.g. https://s3.example.com
     #[arg(long)]
     endpoint: Option<String>,
