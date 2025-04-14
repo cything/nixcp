@@ -160,11 +160,10 @@ impl Push {
                     self.bucket.clone(),
                 )?;
 
-                let fut = tokio::spawn({
+                uploads.push(tokio::spawn(async move {
                     let _permit = permits.acquire().await.unwrap();
-                    async move { uploader.upload().await }
-                });
-                uploads.push(fut);
+                    uploader.upload().await
+                }));
             } else {
                 join_all(uploads)
                     .await
