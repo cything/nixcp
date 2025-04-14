@@ -125,13 +125,13 @@ impl PathInfo {
     }
 
     pub async fn check_if_already_exists(&self, s3_client: &s3::Client, bucket: String) -> bool {
-        !s3_client
+        s3_client
             .head_object()
             .bucket(bucket)
             .key(format!("{}.narinfo", self.digest()))
             .send()
             .await
-            .is_err()
+            .is_ok()
     }
 }
 
