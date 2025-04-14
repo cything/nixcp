@@ -16,9 +16,9 @@ use tokio::sync::{RwLock, Semaphore, mpsc};
 use tracing::{debug, info, trace};
 use url::Url;
 
-use crate::{Cli, path_info::PathInfo, uploader::Uploader};
+use crate::{PushArgs, path_info::PathInfo, uploader::Uploader};
 
-pub struct NixCp {
+pub struct Push {
     upstream_caches: Vec<Url>,
     store_paths: Arc<RwLock<Vec<PathInfo>>>,
     s3_client: s3::Client,
@@ -32,8 +32,8 @@ pub struct NixCp {
     already_exists_count: AtomicUsize,
 }
 
-impl NixCp {
-    pub async fn new(cli: &Cli) -> Result<Self> {
+impl Push {
+    pub async fn new(cli: &PushArgs) -> Result<Self> {
         let mut upstreams = Vec::with_capacity(cli.upstreams.len() + 1);
         for upstream in cli
             .upstreams

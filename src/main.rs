@@ -2,22 +2,34 @@
 #![feature(extend_one)]
 
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use nixcp::NixCp;
+use push::Push;
 
 mod cli;
-mod nixcp;
 mod path_info;
+mod push;
 mod uploader;
 
 #[derive(Parser, Debug)]
-#[command(version, name = "nixcp")]
+#[command(version)]
+#[command(name = "nixcp")]
+#[command(about = "Upload store paths to a s3 binary cache")]
+#[command(long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+}
 
+#[derive(Debug, Subcommand)]
+enum Commands {
+    #[command(arg_required_else_help = true)]
+    Push(PushArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct PushArgs {
     /// The s3 bucket to upload to
     #[arg(long, value_name = "bucket name")]
     bucket: String,
@@ -44,16 +56,14 @@ struct Cli {
     /// AWS profile to use
     #[arg(long)]
     profile: Option<String>,
-}
 
-#[derive(Debug, Subcommand)]
-enum Commands {
-    Push {
-        /// Package or store path to upload
-        /// e.g. nixpkgs#hello or /nix/store/y4qpcibkj767szhjb58i2sidmz8m24hb-hello-2.12.1
-        #[arg(value_name = "package or store path")]
-        package: String,
-    },
+    #[arg(long)]
+    skip_signature_check: bool,
+
+    /// Package or store path to upload
+    /// e.g. nixpkgs#hello or /nix/store/y4qpcibkj767szhjb58i2sidmz8m24hb-hello-2.12.1
+    #[arg(value_name = "package or store path")]
+    package: String,
 }
 
 #[tokio::main]
@@ -63,15 +73,14 @@ async fn main() -> Result<()> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     let cli = Cli::parse();
-    let nixcp = Box::leak(Box::new(NixCp::new(&cli).await?));
 
     match &cli.command {
-        Commands::Push { package } => {
-            nixcp
-                .paths_from_package(package)
+        Commands::Push(cli) => {
+            let push = Box::leak(Box::new(Push::new(cli).await?));
+            push.paths_from_package(&cli.package)
                 .await
                 .context("nixcp get paths from package")?;
-            nixcp.run().await.context("nixcp run")?;
+            push.run().await.context("nixcp run")?;
         }
     }
 
