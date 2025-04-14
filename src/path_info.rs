@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use anyhow::{Context, Error, Result};
+use aws_sdk_s3 as s3;
 use nix_compat::store_path::StorePath;
 use nix_compat::{nixbase32, nixhash::CAHash};
 use regex::Regex;
@@ -99,8 +100,9 @@ impl PathInfo {
     pub async fn check_upstream_hit(&self, upstreams: &[Url]) -> bool {
         for upstream in upstreams {
             let upstream = upstream
-                .join(format!("{}/.narinfo", self.digest()).as_str())
+                .join(format!("{}.narinfo", self.digest()).as_str())
                 .expect("adding <hash>.narinfo should make a valid url");
+            debug!("querying {}", upstream);
             let res_status = reqwest::Client::new()
                 .head(upstream.as_str())
                 .send()
@@ -120,6 +122,16 @@ impl PathInfo {
 
     pub fn digest(&self) -> String {
         nixbase32::encode(self.path.digest())
+    }
+
+    pub async fn check_if_already_exists(&self, s3_client: &s3::Client, bucket: String) -> bool {
+        !s3_client
+            .head_object()
+            .bucket(bucket)
+            .key(format!("{}.narinfo", self.digest()))
+            .send()
+            .await
+            .is_err()
     }
 }
 
