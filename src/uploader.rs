@@ -5,7 +5,6 @@ use aws_sdk_s3::{
     types::{CompletedMultipartUpload, CompletedPart},
 };
 use futures::future::join_all;
-use log::debug;
 use nix_compat::{
     narinfo::{self, NarInfo, SigningKey},
     nixbase32,
@@ -13,6 +12,7 @@ use nix_compat::{
 };
 use sha2::{Digest, Sha256};
 use tokio::{io::AsyncReadExt, process::Command};
+use tracing::debug;
 
 use crate::path_info::PathInfo;
 

@@ -4,6 +4,7 @@
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use nixcp::NixCp;
 
@@ -58,7 +59,9 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::init();
+    let filter = EnvFilter::from_default_env();
+    let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
+    tracing::subscriber::set_global_default(subscriber)?;
     let cli = Cli::parse();
     let nixcp = Box::leak(Box::new(NixCp::new(&cli).await?));
 

@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
 use anyhow::{Context, Error, Result};
-use log::{debug, error, trace};
 use nix_compat::store_path::StorePath;
 use nix_compat::{nixbase32, nixhash::CAHash};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
+use tracing::{debug, error, trace};
 use url::Url;
 
 // nix path-info --derivation --json
