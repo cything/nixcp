@@ -1,24 +1,38 @@
-Runs `nix copy` under the hood but only uploads paths that don't exist in upstream caches. It's async so may also be somewhat faster. Unlike `nix copy`, we also upload build dependencies. You may also pass the `--recursive` flag to absolutely not miss anything (be warned though, it queues up a lot of paths to check against upstream caches (also idk why you'd ever want to use this honestly)). Specify upstream caches to check against with `--upstream-cache` (can be specified multiple times, `cache.nixos.org` is always included).
+Uploads stuff to your s3 binary cache, but skip stuff that exist on upstream caches to save you space and time. Unlike `nix copy`, we also upload build dependencies meaning you just say the package or store path and we figure out the rest. Specify upstream caches to check against with `-u` (can be specified multiple times, `cache.nixos.org` is always included).
+
+## Usage
+
+Example:
+```
+nixcp --bucket nixcache --signing-key ~/cache-priv-key.pem --endpoint https://s3.cy7.sh -u https://nix-community.cachix.org push github:cything/nixcp/2025-04-12
+```
+The signing key is generated with:
+```
+nix-store --generate-binary-cache-key nixcache.cy7.sh cache-priv-key.pem cache-pub-key.pem
+```
+
+`AWS_ACCESS_KEY_ID` and `AWS_ENDPOINT_URL` environment variables should be set with your s3 credentials.
 
 ```
-Usage: nixcp [OPTIONS] --to <BINARY CACHE> <PACKAGE>
+Usage: nixcp [OPTIONS] --bucket <bucket name> --signing-key <SIGNING_KEY> <COMMAND>
 
-Arguments:
-  <PACKAGE>  Package to upload to the binary cache
+Commands:
+  push  
+  help  Print this message or the help of the given subcommand(s)
 
 Options:
-      --to <BINARY CACHE>
-          Address of the binary cache (passed to nix copy --to)
-  -u, --upstream-cache <UPSTREAM_CACHE>
+      --bucket <bucket name>
+          The s3 bucket to upload to
+  -u, --upstream <nixcache.example.com>
           Upstream cache to check against. Can be specified multiple times. cache.nixos.org is always included
-  -r, --recursive
-          Whether to pass --recursive to nix path-info. Can queue a huge number of paths to upload
-      --upstream-checker-concurrency <UPSTREAM_CHECKER_CONCURRENCY>
-          Concurrent upstream cache checkers [default: 32]
-      --uploader-concurrency <UPLOADER_CONCURRENCY>
-          Concurrent uploaders [default: 16]
-      --nix-store-concurrency <NIX_STORE_CONCURRENCY>
-          Concurrent nix-store commands to run [default: 32]
+      --signing-key <SIGNING_KEY>
+          Path to the file containing signing key e.g. ~/cache-priv-key.pem
+      --region <REGION>
+          If unspecified, will get it form AWS_DEFAULT_REGION envar or the AWS default
+      --endpoint <ENDPOINT>
+          If unspecifed, will get it from AWS_ENDPOINT_URL envar or the AWS default e.g. https://s3.example.com
+      --profile <PROFILE>
+          AWS profile to use
   -h, --help
           Print help
   -V, --version
@@ -27,13 +41,13 @@ Options:
 
 ## Install with nix
 ```
-nix profile install git+https://git.cy7.sh/cy/nixcp.git
+nix profile install github:cything/nixcp
 ```
 Or run without installing:
 ```
-nix run git+https://git.cy7.sh/cy/nixcp.git
+nix run github:cything/nixcp
 ```
 Separate arguments with `--` to pass them through to `nixcp` like so:
 ```
-nix run git+https://git.cy7.sh/cy/nixcp.git -- --help
+nix run github:cything/nixcp -- --help
 ```

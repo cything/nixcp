@@ -23,7 +23,7 @@ struct Cli {
     bucket: String,
 
     /// Upstream cache to check against. Can be specified multiple times.
-    /// cache.nixos.org is always included
+    /// cache.nixos.org is always included.
     #[arg(long = "upstream", short, value_name = "nixcache.example.com")]
     upstreams: Vec<String>,
 
