@@ -1,6 +1,5 @@
 #![feature(let_chains)]
 #![feature(extend_one)]
-#![feature(array_chunks)]
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -38,7 +37,7 @@ struct Cli {
     region: Option<String>,
 
     /// If unspecifed, will get it from AWS_ENDPOINT_URL envar or the AWS default
-    /// e.g. s3.example.com
+    /// e.g. https://s3.example.com
     #[arg(long)]
     endpoint: Option<String>,
 
@@ -62,6 +61,7 @@ async fn main() -> Result<()> {
     let filter = EnvFilter::from_default_env();
     let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
     tracing::subscriber::set_global_default(subscriber)?;
+
     let cli = Cli::parse();
     let nixcp = Box::leak(Box::new(NixCp::new(&cli).await?));
 

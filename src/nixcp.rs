@@ -2,7 +2,7 @@ use std::{
     fs,
     iter::once,
     sync::{
-        Arc, Mutex,
+        Arc,
         atomic::{AtomicUsize, Ordering},
     },
 };
@@ -13,7 +13,7 @@ use aws_sdk_s3 as s3;
 use futures::future::join_all;
 use nix_compat::narinfo::{self, SigningKey};
 use tokio::sync::{RwLock, Semaphore, mpsc};
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, trace};
 use url::Url;
 
 use crate::{Cli, path_info::PathInfo, uploader::Uploader};
@@ -132,7 +132,6 @@ impl NixCp {
 
     async fn upload(&'static self, mut rx: mpsc::Receiver<PathInfo>) -> Result<()> {
         let upload_count = AtomicUsize::new(0);
-        let failures: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
         let permits = Arc::new(Semaphore::new(10));
         let mut uploads = Vec::with_capacity(10);
 
@@ -155,7 +154,12 @@ impl NixCp {
                 });
                 uploads.push(fut);
             } else {
-                join_all(uploads).await;
+                join_all(uploads)
+                    .await
+                    .into_iter()
+                    .flatten()
+                    .collect::<Result<Vec<_>>>()?;
+
                 println!("uploaded: {}", upload_count.load(Ordering::Relaxed));
                 println!(
                     "skipped because of signature match: {}",
@@ -165,14 +169,6 @@ impl NixCp {
                     "skipped because of upstream hit: {}",
                     self.upstream_hit_count.load(Ordering::Relaxed)
                 );
-
-                let failures = failures.lock().unwrap();
-                if !failures.is_empty() {
-                    warn!("failed to upload these paths: ");
-                    for failure in failures.iter() {
-                        warn!("{}", failure);
-                    }
-                }
                 break;
             }
         }

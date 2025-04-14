@@ -46,13 +46,14 @@ impl<'a> Uploader<'a> {
         let nar = self.compress_nar(&nar).await;
 
         // update fields that we know after compression
-        nar_info.file_size = Some(nar.len() as u64);
         let mut hasher = Sha256::new();
         hasher.update(&nar);
         let hash: [u8; 32] = hasher.finalize().into();
         let nar_url = self.nar_url(&hash);
         nar_info.file_hash = Some(hash);
-        debug!("uploading to bucket with key: {nar_url}");
+        nar_info.file_size = Some(nar.len() as u64);
+        nar_info.url = nar_url.as_str();
+        debug!("uploading nar with key: {nar_url}");
 
         if nar.len() < MULTIPART_CUTOFF {
             let put_object = self
@@ -75,7 +76,7 @@ impl<'a> Uploader<'a> {
             let upload_id = multipart.upload_id().unwrap();
 
             let mut parts = Vec::with_capacity(nar.len() / MULTIPART_CUTOFF);
-            let chunks = nar.array_chunks::<MULTIPART_CUTOFF>();
+            let chunks = nar.chunks(MULTIPART_CUTOFF);
             for (i, chunk) in chunks.enumerate() {
                 parts.push(tokio::task::spawn(
                     self.s3_client
@@ -122,10 +123,12 @@ impl<'a> Uploader<'a> {
             debug!("complete multipart upload: {:#?}", complete_mp_upload);
         }
 
+        let narinfo_url = format!("{}.narinfo", self.path.digest());
+        debug!("uploading narinfo with key {narinfo_url}");
         self.s3_client
             .put_object()
             .bucket(&self.bucket)
-            .key(format!("{}.narinfo", self.path.digest()))
+            .key(narinfo_url)
             .body(nar_info.to_string().as_bytes().to_vec().into())
             .send()
             .await?;
