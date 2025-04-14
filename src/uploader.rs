@@ -157,7 +157,7 @@ impl<'a> Uploader<'a> {
             nar_size: nar.len() as u64,
             references: self.path.references.iter().map(StorePath::as_ref).collect(),
             signatures: Vec::new(),
-            ca: self.path.ca.clone(),
+            ca: None,
             system: None,
             deriver: Some(self.path.deriver.as_ref()),
             compression: Some("zstd"),

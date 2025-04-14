@@ -2,8 +2,8 @@ use std::collections::HashSet;
 
 use anyhow::{Context, Error, Result};
 use aws_sdk_s3 as s3;
+use nix_compat::nixbase32;
 use nix_compat::store_path::StorePath;
-use nix_compat::{nixbase32, nixhash::CAHash};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
@@ -18,7 +18,6 @@ pub struct PathInfo {
     pub path: StorePath<String>,
     signatures: Vec<String>,
     pub references: Vec<StorePath<String>>,
-    pub ca: Option<CAHash>,
 }
 impl PathInfo {
     /// get PathInfo for a package or a store path
