@@ -1,7 +1,7 @@
-use std::{collections::HashSet, path::Path};
+use std::collections::HashSet;
 
-use anyhow::{Context, Result};
-use log::trace;
+use anyhow::{Context, Error, Result};
+use log::{debug, error, trace};
 use nix_compat::nixhash::CAHash;
 use nix_compat::store_path::StorePath;
 use regex::Regex;
@@ -22,7 +22,8 @@ pub struct PathInfo {
 impl PathInfo {
     /// get PathInfo for a package or a store path
     pub async fn from_path(path: &str) -> Result<Self> {
-        let path_info = Command::new("nix")
+        debug!("query nix path-info for {path}");
+        let nix_cmd = Command::new("nix")
             .arg("path-info")
             .arg("--json")
             .arg(path)
@@ -30,15 +31,30 @@ impl PathInfo {
             .await
             .context("`nix path-info` failed for {package}")?;
 
-        Ok(serde_json::from_slice(&path_info.stdout)?)
+        // nix path-info returns an array with one element
+        match serde_json::from_slice::<Vec<_>>(&nix_cmd.stdout)
+            .context("parse path info from stdout")
+        {
+            Ok(path_info) => path_info
+                .into_iter()
+                .next()
+                .ok_or_else(|| Error::msg("nix path-info returned empty")),
+            Err(e) => {
+                error!(
+                    "Failed to parse data from `nix path-info`. The path may not exist on your system."
+                );
+                Err(e)
+            }
+        }
     }
 
     pub async fn get_closure(&self) -> Result<Vec<Self>> {
+        debug!("query nix-store for {}", self.absolute_path());
         let nix_store_cmd = Command::new("nix-store")
             .arg("--query")
             .arg("--requisites")
             .arg("--include-outputs")
-            .arg(self.deriver.to_string())
+            .arg(self.absolute_path())
             .output()
             .await
             .expect("nix-store cmd failed");
@@ -67,7 +83,7 @@ impl PathInfo {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     fn signees(&self) -> Vec<&str> {
@@ -94,9 +110,8 @@ impl PathInfo {
                 .await
                 .map(|x| x.status());
 
-            match &res_status {
-                Ok(status) => return status.is_success(),
-                Err(_) => return false,
+            if res_status.map(|code| code.is_success()).unwrap_or_default() {
+                return true;
             }
         }
         false
@@ -104,6 +119,10 @@ impl PathInfo {
 
     pub fn absolute_path(&self) -> String {
         self.path.to_absolute_path()
+    }
+
+    pub fn digest(&self) -> &str {
+        str::from_utf8(self.path.digest()).expect("digest should be valid string")
     }
 }
 
