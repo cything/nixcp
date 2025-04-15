@@ -5,14 +5,13 @@ use aws_sdk_s3 as s3;
 use nix_compat::nixbase32;
 use nix_compat::store_path::StorePath;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tokio::process::Command;
 use tracing::{debug, error, trace};
 use url::Url;
 
 // nix path-info --derivation --json
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Deserialize)]
 pub struct PathInfo {
     pub deriver: Option<StorePath<String>>,
     pub path: StorePath<String>,
