@@ -15,7 +15,7 @@ use url::Url;
 pub struct PathInfo {
     pub deriver: Option<StorePath<String>>,
     pub path: StorePath<String>,
-    signatures: Vec<String>,
+    signatures: Option<Vec<String>>,
     pub references: Vec<StorePath<String>>,
 }
 impl PathInfo {
@@ -91,13 +91,15 @@ impl PathInfo {
     }
 
     fn signees(&self) -> Vec<&str> {
-        let signees: Vec<_> = self
-            .signatures
-            .iter()
-            .filter_map(|signature| Some(signature.split_once(":")?.0))
-            .collect();
-        trace!("signees for {}: {:?}", self.path, signees);
-        signees
+        if let Some(signatures) = self.signatures.as_ref() {
+            let signees: Vec<_> = signatures
+                .iter()
+                .filter_map(|signature| Some(signature.split_once(":")?.0))
+                .collect();
+            trace!("signees for {}: {:?}", self.path, signees);
+            return signees;
+        }
+        Vec::new()
     }
 
     pub async fn check_upstream_hit(&self, upstreams: &[Url]) -> bool {
@@ -147,10 +149,10 @@ mod tests {
         let path_info_json = r#"{"deriver":"/nix/store/idy9slp6835nm6x2i41vzm4g1kai1m2p-nixcp-0.1.0.drv.drv","narHash":"sha256-BG5iQEKKOM7d4199942ReE+bZxQDGDuOZqQ5jkTp45o=","narSize":27851376,"path":"/nix/store/giv6gcnv0ymqgi60dx0fsk2l1pxdd1n0-nixcp-0.1.0","references":["/nix/store/954l60hahqvr0hbs7ww6lmgkxvk8akdf-openssl-3.4.1","/nix/store/ik84lbv5jvjm1xxvdl8mhg52ry3xycvm-gcc-14-20241116-lib","/nix/store/rmy663w9p7xb202rcln4jjzmvivznmz8-glibc-2.40-66"],"registrationTime":1744643248,"signatures":["nixcache.cy7.sh:n1lnCoT16xHcuV+tc+/TbZ2m+UKuI15ok+3cg2i5yFHO8+QVUn0x+tOSy6bZ+KxWl4PvmIjUQN1Kus0efn46Cw=="],"valid":true}"#;
         let mut path_info: PathInfo = serde_json::from_str(path_info_json).expect("must serialize");
 
-        path_info.signatures = vec![
+        path_info.signatures = Some(vec![
             "cache.nixos.org-1:sRAGxSFkQ6PGzPGs9caX6y81tqfevIemSSWZjeD7/v1X0J9kEeafaFgz+zBD/0k8imHSWi/leCoIXSCG6/MrCw==".to_string(),
             "nixcache.cy7.sh:hV1VQvztp8UY7hq/G22uzC3vQp4syBtnpJh21I1CRJykqweohb4mdS3enyi+9xXqAUZMfNrZuRFSySqa5WK1Dg==".to_string(),
-        ];
+        ]);
         let signees = path_info.signees();
         assert_eq!(signees, vec!["cache.nixos.org-1", "nixcache.cy7.sh"]);
     }
@@ -160,29 +162,35 @@ mod tests {
         let path_info_json = r#"{"deriver":"/nix/store/idy9slp6835nm6x2i41vzm4g1kai1m2p-nixcp-0.1.0.drv.drv","narHash":"sha256-BG5iQEKKOM7d4199942ReE+bZxQDGDuOZqQ5jkTp45o=","narSize":27851376,"path":"/nix/store/giv6gcnv0ymqgi60dx0fsk2l1pxdd1n0-nixcp-0.1.0","references":["/nix/store/954l60hahqvr0hbs7ww6lmgkxvk8akdf-openssl-3.4.1","/nix/store/ik84lbv5jvjm1xxvdl8mhg52ry3xycvm-gcc-14-20241116-lib","/nix/store/rmy663w9p7xb202rcln4jjzmvivznmz8-glibc-2.40-66"],"registrationTime":1744643248,"signatures":["nixcache.cy7.sh:n1lnCoT16xHcuV+tc+/TbZ2m+UKuI15ok+3cg2i5yFHO8+QVUn0x+tOSy6bZ+KxWl4PvmIjUQN1Kus0efn46Cw=="],"valid":true}"#;
         let mut path_info: PathInfo = serde_json::from_str(path_info_json).expect("must serialize");
 
-        path_info.signatures = vec![
+        path_info.signatures = Some(vec![
             "cache.nixos.org-1:sRAGxSFkQ6PGzPGs9caX6y81tqfevIemSSWZjeD7/v1X0J9kEeafaFgz+zBD/0k8imHSWi/leCoIXSCG6/MrCw==".to_string(),
             "nixcache.cy7.sh:hV1VQvztp8UY7hq/G22uzC3vQp4syBtnpJh21I1CRJykqweohb4mdS3enyi+9xXqAUZMfNrZuRFSySqa5WK1Dg==".to_string(),
             "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=".to_string(),
-        ];
-        assert_eq!(
-            path_info.check_upstream_signature(&[Url::parse("https://cache.nixos.org").unwrap()]),
-            true
+        ]);
+        assert!(
+            path_info.check_upstream_signature(&[Url::parse("https://cache.nixos.org").unwrap()])
         );
-        assert_eq!(
-            path_info.check_upstream_signature(&[Url::parse("https://nixcache.cy7.sh").unwrap()]),
-            true
+        assert!(
+            path_info.check_upstream_signature(&[Url::parse("https://nixcache.cy7.sh").unwrap()])
         );
-        assert_eq!(
+        assert!(
             path_info.check_upstream_signature(&[
                 Url::parse("https://nix-community.cachix.org").unwrap()
-            ]),
-            true
+            ])
         );
-        assert_eq!(
-            path_info
+        assert!(
+            !path_info
                 .check_upstream_signature(&[Url::parse("https://fake-cache.cachix.org").unwrap()]),
-            false
+        );
+    }
+
+    #[test]
+    fn path_info_without_signature() {
+        let path_info_json = r#"{"ca":"fixed:r:sha256:1q10p04pgx9sk6xbvrkn4nvh0ys2lzplgcni5368f4z3cr8ikbmz","narHash":"sha256-v64ZUWbjE4fMKNGyR++nQnsAtyV25r26mTr1dwm4IOA=","narSize":5520,"path":"/nix/store/gj6hz9mj23v01yvq1nn5f655jrcky1qq-nixos-option.nix","references":[],"registrationTime":1744740942,"valid":true}"#;
+        let path_info: PathInfo = serde_json::from_str(path_info_json).expect("must serialize");
+
+        assert!(
+            !path_info.check_upstream_signature(&[Url::parse("https://cache.nixos.org").unwrap()])
         );
     }
 }
