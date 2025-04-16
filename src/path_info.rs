@@ -25,8 +25,12 @@ impl PathInfo {
     pub async fn from_path(path: &str) -> Result<Self> {
         debug!("query nix path-info for {path}");
         // use lix cause nix would return a json map instead of an array
+        // json output is not stable and could break in future
+        // TODO figure out a better way
         let nix_cmd = Command::new("nix")
             .arg("run")
+            .arg("--experimental-features")
+            .arg("nix-command flakes")
             .arg("github:nixos/nixpkgs/nixos-unstable#lix")
             .arg("--")
             .arg("path-info")
