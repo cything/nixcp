@@ -15,16 +15,16 @@ limitations under the License.
 */
 
 //! `libnixstore` Bindings
+#![allow(dead_code)]
 
 use std::cell::UnsafeCell;
 use std::io;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+use anyhow::Result;
 use futures::stream::{Stream, StreamExt};
 use tokio::io::{AsyncWrite, AsyncWriteExt};
-
-use crate::{AtticError, AtticResult};
 
 // The C++ implementation takes care of concurrency
 #[repr(transparent)]
@@ -43,7 +43,7 @@ impl FfiNixStore {
 }
 
 /// Obtain a handle to the Nix store.
-pub unsafe fn open_nix_store() -> AtticResult<FfiNixStore> {
+pub unsafe fn open_nix_store() -> Result<FfiNixStore> {
     match ffi::open_nix_store() {
         Ok(ptr) => {
             let cell = UnsafeCell::new(ptr);
@@ -116,7 +116,7 @@ impl AsyncWriteAdapter {
     }
 
     /// Write everything the sender sends to us.
-    pub async fn write_all(mut self, mut writer: Box<dyn AsyncWrite + Unpin>) -> AtticResult<()> {
+    pub async fn write_all(mut self, mut writer: Box<dyn AsyncWrite + Unpin>) -> Result<()> {
         let writer = writer.as_mut();
 
         while let Some(data) = self.next().await {
@@ -139,7 +139,7 @@ impl AsyncWriteAdapter {
 }
 
 impl Stream for AsyncWriteAdapter {
-    type Item = AtticResult<Vec<u8>>;
+    type Item = Result<Vec<u8>>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.receiver.poll_recv(cx) {
@@ -149,7 +149,7 @@ impl Stream for AsyncWriteAdapter {
                 match message {
                     Data(v) => Poll::Ready(Some(Ok(v))),
                     Error(exception) => {
-                        let error = AtticError::CxxError { exception };
+                        let error = anyhow::Error::msg(format!("cxx error: {exception}"));
                         Poll::Ready(Some(Err(error)))
                     }
                     Eof => {
@@ -181,7 +181,7 @@ mod ffi {
     }
 
     unsafe extern "C++" {
-        include!("attic/src/nix_store/bindings/nix.hpp");
+        include!("nix.hpp");
 
         // =========
         // CNixStore
@@ -266,5 +266,8 @@ mod ffi {
 
         /// Returns the CA field of the store path.
         fn ca(self: Pin<&mut CPathInfo>) -> String;
+
+        /// Returns the derivation that built this path
+        fn deriver(self: Pin<&mut CPathInfo>) -> String;
     }
 }

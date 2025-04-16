@@ -103,6 +103,14 @@ RString CPathInfo::ca() {
 	}
 }
 
+RString CPathInfo::deriver() {
+	if (this->pi->deriver) {
+		return RString((this->pi->deriver).to_string());
+	} else {
+		return RString("");
+	}
+}
+
 // =========
 // CNixStore
 // =========
