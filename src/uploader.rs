@@ -132,6 +132,7 @@ impl<'a> Uploader<'a> {
             .body(nar_info.to_string().as_bytes().to_vec().into())
             .send()
             .await?;
+        debug!("done uploading narinfo");
 
         Ok(())
     }
