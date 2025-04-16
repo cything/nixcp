@@ -30,6 +30,8 @@ pub struct Push {
     upstream_hit_count: AtomicUsize,
     // paths that we skipped cause they are already on our cache
     already_exists_count: AtomicUsize,
+    // paths that we uploaded
+    upload_count: AtomicUsize,
 }
 
 impl Push {
@@ -68,6 +70,7 @@ impl Push {
             signature_hit_count: AtomicUsize::new(0),
             upstream_hit_count: AtomicUsize::new(0),
             already_exists_count: AtomicUsize::new(0),
+            upload_count: AtomicUsize::new(0),
         })
     }
 
@@ -139,7 +142,6 @@ impl Push {
     }
 
     async fn upload(&'static self, mut rx: mpsc::Receiver<PathInfo>) -> Result<()> {
-        let upload_count = AtomicUsize::new(0);
         let mut uploads = Vec::with_capacity(10);
 
         loop {
@@ -154,7 +156,11 @@ impl Push {
                     self.bucket.clone(),
                 )?;
 
-                uploads.push(tokio::spawn(async move { uploader.upload().await }));
+                uploads.push(tokio::spawn(async move {
+                    let res = uploader.upload().await;
+                    self.upload_count.fetch_add(1, Ordering::Relaxed);
+                    res
+                }));
             } else {
                 join_all(uploads)
                     .await
@@ -162,7 +168,7 @@ impl Push {
                     .flatten()
                     .collect::<Result<Vec<_>>>()?;
 
-                println!("uploaded: {}", upload_count.load(Ordering::Relaxed));
+                println!("uploaded: {}", self.upload_count.load(Ordering::Relaxed));
                 println!(
                     "skipped because of signature match: {}",
                     self.signature_hit_count.load(Ordering::Relaxed)
