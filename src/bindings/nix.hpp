@@ -63,11 +63,8 @@ class CPathInfo {
 	nix::ref<const nix::ValidPathInfo> pi;
 public:
 	CPathInfo(nix::ref<const nix::ValidPathInfo> pi);
-	RHashSlice nar_sha256_hash();
-	uint64_t nar_size();
 	std::unique_ptr<std::vector<std::string>> sigs();
 	std::unique_ptr<std::vector<std::string>> references();
-	RString ca();
 };
 
 class CNixStore {
@@ -82,15 +79,9 @@ public:
 		bool flip_direction,
 		bool include_outputs,
 		bool include_derivers);
-	std::unique_ptr<std::vector<std::string>> compute_fs_closure_multi(
-		RSlice<const RBasePathSlice> base_names,
-		bool flip_direction,
-		bool include_outputs,
-		bool include_derivers);
-	void nar_from_path(RVec<unsigned char> base_name, RBox<AsyncWriteSender> sender);
 };
 
 std::unique_ptr<CNixStore> open_nix_store();
 
 // Relies on our definitions
-#include "attic/src/nix_store/bindings/mod.rs.h"
+#include "nixcp/src/bindings/mod.rs.h"

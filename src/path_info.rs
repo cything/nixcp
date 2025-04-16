@@ -14,7 +14,6 @@ use crate::store::Store;
 
 #[derive(Debug, Clone)]
 pub struct PathInfo {
-    pub deriver: Option<StorePath<String>>,
     pub path: StorePath<String>,
     pub signatures: Vec<String>,
     pub references: Vec<StorePath<String>>,

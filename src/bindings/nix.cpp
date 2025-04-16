@@ -24,7 +24,7 @@ limitations under the License.
 // Rust types directly where possible, so that the interfaces are
 // satisfying to use from the Rust side via cxx.rs.
 
-#include "attic/src/nix_store/bindings/nix.hpp"
+#include "nixcp/src/bindings/nix.hpp"
 
 static std::mutex g_init_nix_mutex;
 static bool g_init_nix_done = false;
@@ -32,14 +32,6 @@ static bool g_init_nix_done = false;
 static nix::StorePath store_path_from_rust(RBasePathSlice base_name) {
 	std::string_view sv((const char *)base_name.data(), base_name.size());
 	return nix::StorePath(sv);
-}
-
-static bool hash_is_sha256(const nix::Hash &hash) {
-#ifdef ATTIC_NIX_2_20
-	return hash.algo == nix::HashAlgorithm::SHA256;
-#else
-	return hash.type == nix::htSHA256;
-#endif
 }
 
 // ========
@@ -65,20 +57,6 @@ void RustSink::eof() {
 
 CPathInfo::CPathInfo(nix::ref<const nix::ValidPathInfo> pi) : pi(pi) {}
 
-RHashSlice CPathInfo::nar_sha256_hash() {
-	auto &hash = this->pi->narHash;
-
-	if (!hash_is_sha256(hash)) {
-		throw nix::Error("Only SHA-256 hashes are supported at the moment");
-	}
-
-	return RHashSlice(hash.hash, hash.hashSize);
-}
-
-uint64_t CPathInfo::nar_size() {
-	return this->pi->narSize;
-}
-
 std::unique_ptr<std::vector<std::string>> CPathInfo::sigs() {
 	std::vector<std::string> result;
 	for (auto&& elem : this->pi->sigs) {
@@ -95,22 +73,6 @@ std::unique_ptr<std::vector<std::string>> CPathInfo::references() {
 	return std::make_unique<std::vector<std::string>>(result);
 }
 
-RString CPathInfo::ca() {
-	if (this->pi->ca) {
-		return RString(nix::renderContentAddress(this->pi->ca));
-	} else {
-		return RString("");
-	}
-}
-
-RString CPathInfo::deriver() {
-	if (this->pi->deriver) {
-		return RString((this->pi->deriver).to_string());
-	} else {
-		return RString("");
-	}
-}
-
 // =========
 // CNixStore
 // =========
@@ -125,10 +87,6 @@ CNixStore::CNixStore() {
 	}
 
 	this->store = nix::openStore(nix::settings.storeUri.get(), params);
-}
-
-RString CNixStore::store_dir() {
-	return RString(this->store->storeDir);
 }
 
 std::unique_ptr<CPathInfo> CNixStore::query_path_info(RBasePathSlice base_name) {
@@ -148,32 +106,6 @@ std::unique_ptr<std::vector<std::string>> CNixStore::compute_fs_closure(RBasePat
 		result.push_back(std::string(elem.to_string()));
 	}
 	return std::make_unique<std::vector<std::string>>(result);
-}
-
-std::unique_ptr<std::vector<std::string>> CNixStore::compute_fs_closure_multi(RSlice<const RBasePathSlice> base_names, bool flip_direction, bool include_outputs, bool include_derivers) {
-	std::set<nix::StorePath> path_set, out;
-	for (auto&& base_name : base_names) {
-		path_set.insert(store_path_from_rust(base_name));
-	}
-
-	this->store->computeFSClosure(path_set, out, flip_direction, include_outputs, include_derivers);
-
-	std::vector<std::string> result;
-	for (auto&& elem : out) {
-		result.push_back(std::string(elem.to_string()));
-	}
-	return std::make_unique<std::vector<std::string>>(result);
-}
-
-void CNixStore::nar_from_path(RVec<unsigned char> base_name, RBox<AsyncWriteSender> sender) {
-	RustSink sink(std::move(sender));
-
-	std::string_view sv((const char *)base_name.data(), base_name.size());
-	nix::StorePath store_path(sv);
-
-	// exceptions will be thrown into Rust
-	this->store->narFromPath(store_path, sink);
-	sink.eof();
 }
 
 std::unique_ptr<CNixStore> open_nix_store() {

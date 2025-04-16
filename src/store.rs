@@ -46,7 +46,6 @@ impl Store {
         task::spawn_blocking(move || {
             let mut c_path_info = inner.store().query_path_info(path.to_string().as_bytes())?;
 
-            let deriver = c_path_info.pin_mut().deriver();
             let signatures = c_path_info
                 .pin_mut()
                 .sigs()
@@ -65,11 +64,6 @@ impl Store {
 
             Ok(PathInfo {
                 path,
-                deriver: if deriver.is_empty() {
-                    None
-                } else {
-                    Some(StorePath::from_bytes(deriver.as_bytes())?)
-                },
                 signatures,
                 references,
             })

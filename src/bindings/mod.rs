@@ -181,7 +181,7 @@ mod ffi {
     }
 
     unsafe extern "C++" {
-        include!("nix.hpp");
+        include!("nixcp/src/bindings/nix.hpp");
 
         // =========
         // CNixStore
@@ -189,16 +189,6 @@ mod ffi {
 
         /// Mid-level wrapper for the Unix Domain Socket Nix Store.
         type CNixStore;
-
-        /// Returns the path of the Nix store itself.
-        fn store_dir(self: Pin<&mut CNixStore>) -> String;
-
-        /*
-        /// Verifies that a path is indeed in the Nix store, then return the base store path.
-        ///
-        /// Use parse_store_path instead.
-        fn to_store_path(self: Pin<&mut CNixStore>, path: &str) -> Result<String>;
-        */
 
         /// Queries information about a valid path.
         fn query_path_info(
@@ -218,30 +208,6 @@ mod ffi {
             include_derivers: bool,
         ) -> Result<UniquePtr<CxxVector<CxxString>>>;
 
-        /// Computes the closure of a list of valid paths.
-        ///
-        /// This is the multi-path variant of `compute_fs_closure`.
-        /// If `flip_directions` is true, the set of paths that can reach `store_path` is
-        /// returned.
-        ///
-        /// It's easier and more efficient to just pass a vector of slices
-        /// instead of wrangling with concrete "extern rust" / "extern C++"
-        /// types.
-        fn compute_fs_closure_multi(
-            self: Pin<&mut CNixStore>,
-            base_names: &[&[u8]],
-            flip_direction: bool,
-            include_outputs: bool,
-            include_derivers: bool,
-        ) -> Result<UniquePtr<CxxVector<CxxString>>>;
-
-        /// Creates a NAR dump from a path.
-        fn nar_from_path(
-            self: Pin<&mut CNixStore>,
-            base_name: Vec<u8>,
-            sender: Box<AsyncWriteSender>,
-        ) -> Result<()>;
-
         /// Obtains a handle to the Nix store.
         fn open_nix_store() -> Result<UniquePtr<CNixStore>>;
 
@@ -252,22 +218,10 @@ mod ffi {
         /// Mid-level wrapper for the `nix::ValidPathInfo` struct.
         type CPathInfo;
 
-        /// Returns the SHA-256 hash of the store path.
-        fn nar_sha256_hash(self: Pin<&mut CPathInfo>) -> &[u8];
-
-        /// Returns the size of the NAR.
-        fn nar_size(self: Pin<&mut CPathInfo>) -> u64;
-
         /// Returns the references of the store path.
         fn references(self: Pin<&mut CPathInfo>) -> UniquePtr<CxxVector<CxxString>>;
 
         /// Returns the possibly invalid signatures attached to the store path.
         fn sigs(self: Pin<&mut CPathInfo>) -> UniquePtr<CxxVector<CxxString>>;
-
-        /// Returns the CA field of the store path.
-        fn ca(self: Pin<&mut CPathInfo>) -> String;
-
-        /// Returns the derivation that built this path
-        fn deriver(self: Pin<&mut CPathInfo>) -> String;
     }
 }

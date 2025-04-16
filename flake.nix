@@ -22,6 +22,7 @@
         };
         toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         craneLib = (crane.mkLib pkgs).overrideToolchain(_: toolchain);
+        lib = pkgs.lib;
       in
       {
         devShells.default = pkgs.mkShell {
@@ -29,9 +30,12 @@
             pkg-config
           ];
           buildInputs = with pkgs; [
-            openssl
             toolchain
+            openssl
+            nix
+            boost
           ];
+          NIX_INCLUDE_PATH = "${lib.getDev pkgs.nix}/include";
         };
 
         packages.default = craneLib.buildPackage {
