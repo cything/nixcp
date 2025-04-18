@@ -7,6 +7,7 @@ use nix_compat::nixbase32;
 use nix_compat::store_path::StorePath;
 use regex::Regex;
 use std::path::Path;
+use tokio::process::Command;
 use tracing::{debug, trace};
 use url::Url;
 
@@ -22,9 +23,29 @@ pub struct PathInfo {
 impl PathInfo {
     pub async fn from_path(path: &Path, store: &Store) -> Result<Self> {
         debug!("query path info for {:?}", path);
-        let canon = path.canonicalize().context("canonicalize path")?;
-        let store_path = StorePath::from_absolute_path(canon.into_os_string().as_encoded_bytes())?;
-        store.query_path_info(store_path).await
+
+        let derivation = match path.extension() {
+            Some(ext) if ext == "drv" => path.as_os_str().as_encoded_bytes(),
+            _ => {
+                &Command::new("nix")
+                    .arg("path-info")
+                    .arg("--derivation")
+                    .arg(path)
+                    .output()
+                    .await
+                    .context(format!("run command: nix path-info --derivaiton {path:?}"))?
+                    .stdout
+            }
+        };
+        let derivation = String::from_utf8_lossy(derivation);
+        debug!("derivation: {derivation}");
+
+        let store_path = StorePath::from_absolute_path(derivation.trim().as_bytes())
+            .context("storepath from derivation")?;
+        store
+            .query_path_info(store_path)
+            .await
+            .context("query pathinfo for derivation")
     }
 
     pub async fn get_closure(&self, store: &Store) -> Result<Vec<Self>> {

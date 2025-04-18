@@ -5,7 +5,6 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use push::Push;
 use store::Store;
@@ -73,9 +72,7 @@ pub struct PushArgs {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let filter = EnvFilter::from_default_env();
-    let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
-    tracing::subscriber::set_global_default(subscriber)?;
+    console_subscriber::init();
 
     let cli = Cli::parse();
 

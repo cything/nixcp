@@ -34,8 +34,11 @@
             openssl
             nix
             boost
+            tokio-console
           ];
           NIX_INCLUDE_PATH = "${lib.getDev pkgs.nix}/include";
+          RUST_LOG = "nixcp=debug";
+          RUST_BACKGRACE = 1;
         };
 
         packages.default = craneLib.buildPackage {

@@ -13,8 +13,8 @@ use aws_config::Region;
 use aws_sdk_s3 as s3;
 use futures::future::join_all;
 use nix_compat::narinfo::{self, SigningKey};
-use tokio::sync::{RwLock, Semaphore, mpsc};
-use tracing::{debug, trace};
+use tokio::sync::{RwLock, mpsc};
+use tracing::debug;
 use url::Url;
 
 use crate::{PushArgs, path_info::PathInfo, store::Store, uploader::Uploader};
@@ -124,7 +124,7 @@ impl Push {
 
         for path in store_paths.into_iter() {
             if path.check_upstream_signature(&self.upstream_caches) {
-                trace!("skip {} (signature match)", path.absolute_path());
+                debug!("skip {} (signature match)", path.absolute_path());
                 self.signature_hit_count.fetch_add(1, Ordering::Release);
                 continue;
             }
@@ -139,13 +139,13 @@ impl Push {
                             .check_if_already_exists(&self.s3_client, self.bucket.clone())
                             .await
                         {
-                            trace!("skip {} (already exists)", path.absolute_path());
+                            debug!("skip {} (already exists)", path.absolute_path());
                             self.already_exists_count.fetch_add(1, Ordering::Relaxed);
                         } else {
                             tx.send(path).await.unwrap();
                         }
                     } else {
-                        trace!("skip {} (upstream hit)", path.absolute_path());
+                        debug!("skip {} (upstream hit)", path.absolute_path());
                         self.upstream_hit_count.fetch_add(1, Ordering::Relaxed);
                     }
                 })
@@ -161,13 +161,11 @@ impl Push {
 
     async fn upload(&'static self, mut rx: mpsc::Receiver<PathInfo>) -> Result<()> {
         let mut uploads = Vec::with_capacity(10);
-        let permits = Arc::new(Semaphore::new(10));
 
         loop {
             if let Some(path_to_upload) = rx.recv().await {
-                let absolute_path = path_to_upload.absolute_path();
+                println!("uploading: {}", path_to_upload.absolute_path());
 
-                println!("uploading: {}", absolute_path);
                 let uploader = Uploader::new(
                     &self.signing_key,
                     path_to_upload,
@@ -176,10 +174,7 @@ impl Push {
                 )?;
 
                 uploads.push(tokio::spawn({
-                    let permits = permits.clone();
-
                     async move {
-                        let _permit = permits.acquire().await;
                         let res = uploader.upload().await;
                         self.upload_count.fetch_add(1, Ordering::Relaxed);
                         res

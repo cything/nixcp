@@ -44,7 +44,10 @@ impl Store {
         let inner = self.inner.clone();
 
         task::spawn_blocking(move || {
-            let mut c_path_info = inner.store().query_path_info(path.to_string().as_bytes())?;
+            let mut c_path_info = inner
+                .store()
+                .query_path_info(path.to_string().as_bytes())
+                .context("query cpp for path info")?;
 
             let signatures = c_path_info
                 .pin_mut()
@@ -60,7 +63,8 @@ impl Store {
                 .references()
                 .into_iter()
                 .map(|x| StorePath::from_bytes(x.as_bytes()))
-                .collect::<Result<_, _>>()?;
+                .collect::<Result<_, _>>()
+                .context("get references from pathinfo")?;
 
             Ok(PathInfo {
                 path,

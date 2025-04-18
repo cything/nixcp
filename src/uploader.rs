@@ -23,6 +23,7 @@ pub struct Uploader<'a> {
     path: PathInfo,
     s3_client: &'a s3::Client,
     bucket: String,
+    hash: Sha256,
 }
 
 impl<'a> Uploader<'a> {
@@ -37,6 +38,7 @@ impl<'a> Uploader<'a> {
             path,
             s3_client,
             bucket,
+            hash: Sha256::new(),
         })
     }
 
