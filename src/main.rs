@@ -1,11 +1,11 @@
 #![feature(let_chains)]
-#![feature(extend_one)]
 #![feature(exit_status_error)]
 
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
+use tracing_subscriber::{EnvFilter, prelude::*};
 
 use push::Push;
 use store::Store;
@@ -26,6 +26,10 @@ mod uploader;
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+
+    /// Whether to enable tokio-console
+    #[arg(long)]
+    tokio_console: bool,
 }
 
 #[derive(Debug, Subcommand)]
@@ -70,9 +74,8 @@ pub struct PushArgs {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    console_subscriber::init();
-
     let cli = Cli::parse();
+    init_logging(cli.tokio_console);
 
     match &cli.command {
         Commands::Push(cli) => {
@@ -86,4 +89,24 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn init_logging(tokio_console: bool) {
+    let env_filter = EnvFilter::from_default_env();
+    let fmt_layer = tracing_subscriber::fmt::layer().with_filter(env_filter);
+
+    let console_layer = if tokio_console {
+        Some(console_subscriber::spawn())
+    } else {
+        None
+    };
+
+    tracing_subscriber::registry()
+        .with(fmt_layer)
+        .with(console_layer)
+        .init();
+
+    if tokio_console {
+        println!("tokio-console is enabled");
+    }
 }
