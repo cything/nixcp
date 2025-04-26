@@ -23,7 +23,16 @@
         toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         craneLib = (crane.mkLib pkgs).overrideToolchain(_: toolchain);
         lib = pkgs.lib;
-        src = craneLib.cleanCargoSource ./.;
+
+        # don't clean cpp files
+        cppFilter = path: _type: builtins.match ".*(cpp|hpp)$" path != null;
+        cppOrCargo = path: type:
+          (cppFilter path type) || (craneLib.filterCargoSources path type);
+        src = lib.cleanSourceWith {
+          src = ./.;
+          filter = cppOrCargo;
+          name = "source";
+        };
 
         commonArgs = {
           inherit src;
