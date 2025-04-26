@@ -9,23 +9,23 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use aws_config::Region;
-use aws_sdk_s3 as s3;
 use futures::future::join_all;
 use nix_compat::narinfo::{self, SigningKey};
-use tokio::sync::{RwLock, mpsc};
+use object_store::aws::{AmazonS3, AmazonS3Builder};
+use tokio::sync::{RwLock, Semaphore, mpsc};
 use tracing::debug;
 use url::Url;
 
 use crate::{PushArgs, path_info::PathInfo, store::Store, uploader::Uploader};
 
+const UPLOAD_CONCURRENCY: usize = 32;
+
 pub struct Push {
     upstream_caches: Vec<Url>,
     store_paths: Arc<RwLock<Vec<PathInfo>>>,
-    s3_client: s3::Client,
     signing_key: SigningKey<ed25519_dalek::SigningKey>,
-    bucket: String,
     store: Arc<Store>,
+    s3: Arc<AmazonS3>,
     // paths that we skipped cause of a signature match
     signature_hit_count: AtomicUsize,
     // paths that we skipped cause we found it on an upstream
@@ -51,25 +51,21 @@ impl Push {
         let key = fs::read_to_string(&cli.signing_key)?;
         let signing_key = narinfo::parse_keypair(key.as_str())?.0;
 
-        let mut s3_config = aws_config::from_env();
+        let mut s3_builder = AmazonS3Builder::from_env().with_bucket_name(&cli.bucket);
+
         if let Some(region) = &cli.region {
-            s3_config = s3_config.region(Region::new(region.clone()));
+            s3_builder = s3_builder.with_region(region);
         }
         if let Some(endpoint) = &cli.endpoint {
-            s3_config = s3_config.endpoint_url(endpoint);
-        }
-        if let Some(profile) = &cli.profile {
-            s3_config = s3_config.profile_name(profile);
+            s3_builder = s3_builder.with_endpoint(endpoint);
         }
 
-        let s3_client = s3::Client::new(&s3_config.load().await);
         Ok(Self {
             upstream_caches: upstreams,
             store_paths: Arc::new(RwLock::new(Vec::new())),
-            s3_client,
             signing_key,
-            bucket: cli.bucket.clone(),
             store: Arc::new(store),
+            s3: Arc::new(s3_builder.build()?),
             signature_hit_count: AtomicUsize::new(0),
             upstream_hit_count: AtomicUsize::new(0),
             already_exists_count: AtomicUsize::new(0),
@@ -109,9 +105,10 @@ impl Push {
     }
 
     pub async fn run(&'static self) -> Result<()> {
-        let (tx, rx) = mpsc::channel(10);
+        let (tx, rx) = mpsc::channel(UPLOAD_CONCURRENCY);
         let filter = tokio::spawn(self.filter_from_upstream(tx));
         let upload = tokio::spawn(self.upload(rx));
+
         filter.await?;
         upload.await??;
         Ok(())
@@ -135,10 +132,7 @@ impl Push {
                         .check_upstream_hit(self.upstream_caches.as_slice())
                         .await
                     {
-                        if path
-                            .check_if_already_exists(&self.s3_client, self.bucket.clone())
-                            .await
-                        {
+                        if path.check_if_already_exists(&self.s3).await {
                             debug!("skip {} (already exists)", path.absolute_path());
                             self.already_exists_count.fetch_add(1, Ordering::Relaxed);
                         } else {
@@ -160,22 +154,23 @@ impl Push {
     }
 
     async fn upload(&'static self, mut rx: mpsc::Receiver<PathInfo>) -> Result<()> {
-        let mut uploads = Vec::with_capacity(10);
+        let mut uploads = Vec::new();
+        let permits = Arc::new(Semaphore::new(UPLOAD_CONCURRENCY));
 
         loop {
+            let permits = permits.clone();
+            let permit = permits.acquire_owned().await.unwrap();
+
             if let Some(path_to_upload) = rx.recv().await {
                 println!("uploading: {}", path_to_upload.absolute_path());
 
-                let uploader = Uploader::new(
-                    &self.signing_key,
-                    path_to_upload,
-                    &self.s3_client,
-                    self.bucket.clone(),
-                )?;
+                let uploader = Uploader::new(&self.signing_key, path_to_upload)?;
 
                 uploads.push(tokio::spawn({
+                    let s3 = self.s3.clone();
                     async move {
-                        let res = uploader.upload().await;
+                        let res = uploader.upload(s3).await;
+                        drop(permit);
                         self.upload_count.fetch_add(1, Ordering::Relaxed);
                         res
                     }

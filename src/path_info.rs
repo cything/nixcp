@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
 use anyhow::{Context, Result};
-use aws_sdk_s3 as s3;
 use futures::future::join_all;
 use nix_compat::nixbase32;
 use nix_compat::store_path::StorePath;
+use object_store::{ObjectStore, aws::AmazonS3, path::Path as ObjectPath};
 use regex::Regex;
 use std::path::Path;
 use tokio::process::Command;
@@ -82,13 +82,13 @@ impl PathInfo {
             .filter_map(|signature| Some(signature.split_once(":")?.0))
             .collect();
         trace!("signers for {}: {:?}", self.path, signers);
-        return signers;
+        signers
     }
 
     pub async fn check_upstream_hit(&self, upstreams: &[Url]) -> bool {
         for upstream in upstreams {
             let upstream = upstream
-                .join(format!("{}.narinfo", self.digest()).as_str())
+                .join(self.narinfo_path().as_ref())
                 .expect("adding <hash>.narinfo should make a valid url");
             debug!("querying {}", upstream);
             let res_status = reqwest::Client::new()
@@ -108,17 +108,12 @@ impl PathInfo {
         self.path.to_absolute_path()
     }
 
-    pub fn digest(&self) -> String {
-        nixbase32::encode(self.path.digest())
+    pub fn narinfo_path(&self) -> ObjectPath {
+        ObjectPath::parse(format!("{}.narinfo", nixbase32::encode(self.path.digest())))
+            .expect("must parse to a valid object_store path")
     }
 
-    pub async fn check_if_already_exists(&self, s3_client: &s3::Client, bucket: String) -> bool {
-        s3_client
-            .head_object()
-            .bucket(bucket)
-            .key(format!("{}.narinfo", self.digest()))
-            .send()
-            .await
-            .is_ok()
+    pub async fn check_if_already_exists(&self, s3: &AmazonS3) -> bool {
+        s3.head(&self.narinfo_path()).await.is_ok()
     }
 }

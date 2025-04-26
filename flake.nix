@@ -35,6 +35,7 @@
             nix
             boost
             tokio-console
+            cargo-udeps
           ];
           NIX_INCLUDE_PATH = "${lib.getDev pkgs.nix}/include";
           RUST_LOG = "nixcp=debug";

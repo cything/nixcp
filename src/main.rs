@@ -1,5 +1,6 @@
 #![feature(let_chains)]
 #![feature(extend_one)]
+#![feature(exit_status_error)]
 
 use std::path::PathBuf;
 
@@ -11,6 +12,7 @@ use store::Store;
 
 mod bindings;
 mod cli;
+mod make_nar;
 mod path_info;
 mod push;
 mod store;
@@ -48,18 +50,14 @@ pub struct PushArgs {
     #[arg(long)]
     signing_key: String,
 
-    /// If unspecified, will get it form AWS_DEFAULT_REGION envar
+    /// If unspecified, will get it form AWS_DEFAULT_REGION envar or default to us-east-1
     #[arg(long)]
     region: Option<String>,
 
-    /// If unspecifed, will get it from AWS_ENDPOINT_URL envar
+    /// If unspecifed, will get it from AWS_ENDPOINT envar
     /// e.g. https://s3.example.com
     #[arg(long)]
     endpoint: Option<String>,
-
-    /// AWS profile to use
-    #[arg(long)]
-    profile: Option<String>,
 
     #[arg(long)]
     skip_signature_check: bool,

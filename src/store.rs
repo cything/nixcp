@@ -28,13 +28,13 @@ impl Store {
                 inner
                     .store()
                     .compute_fs_closure(path.to_string().as_bytes(), false, true, true)?;
-            Ok(cxx_vector
+            cxx_vector
                 .iter()
                 .map(|x| {
                     StorePath::from_bytes(x.as_bytes())
                         .context("make StorePath from vector returned by compute_fs_closure")
                 })
-                .collect::<Result<_, _>>()?)
+                .collect::<Result<_, _>>()
         })
         .await
         .unwrap()
