@@ -18,7 +18,7 @@ use url::Url;
 
 use crate::{PushArgs, path_info::PathInfo, store::Store, uploader::Uploader};
 
-const UPLOAD_CONCURRENCY: usize = 32;
+const UPLOAD_CONCURRENCY: usize = 5;
 
 pub struct Push {
     upstream_caches: Vec<Url>,
@@ -159,6 +159,7 @@ impl Push {
 
         loop {
             let permits = permits.clone();
+            debug!("upload permits available: {}", permits.available_permits());
             let permit = permits.acquire_owned().await.unwrap();
 
             if let Some(path_to_upload) = rx.recv().await {
