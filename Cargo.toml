@@ -3,6 +3,10 @@ name = "nixcp"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+lto = true
+codegen-units = 1
+
 [dependencies]
 anyhow = "1.0.97"
 async-compression = { version = "0.4.22", features = ["tokio", "zstd"] }
