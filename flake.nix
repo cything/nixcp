@@ -23,41 +23,45 @@
         toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         craneLib = (crane.mkLib pkgs).overrideToolchain(_: toolchain);
         lib = pkgs.lib;
-        nativeBuildInputs = with pkgs; [
-          pkg-config
-        ];
-        buildInputs = with pkgs; [
-          toolchain
-          openssl
-          nix
-          boost
-        ];
-        env = {
+        src = craneLib.cleanCargoSource ./.;
+
+        commonArgs = {
+          inherit src;
+          strictDeps = true;
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+          ];
+          buildInputs = with pkgs; [
+            toolchain
+            openssl
+            nix
+            boost
+          ];
           # for cpp bindings to work
           NIX_INCLUDE_PATH = "${lib.getDev pkgs.nix}/include";
         };
+
+        cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+        nixcp = craneLib.buildPackage (commonArgs // {
+          inherit cargoArtifacts;
+        });
       in
       {
-        devShells.default = pkgs.mkShell {
-          inherit buildInputs;
-          inherit nativeBuildInputs;
+        devShells.default = craneLib.devShell {
+          inputsFrom = [ nixcp ];
+
+          RUST_LOG = "nixcp=debug";
+          RUST_BACKGRACE = 1;
+          # for cpp bindings to work
+          NIX_INCLUDE_PATH = "${lib.getDev pkgs.nix}/include";
+
           packages = with pkgs; [
             tokio-console
             cargo-udeps
           ];
-          env = env // {
-            RUST_LOG = "nixcp=debug";
-            RUST_BACKGRACE = 1;
-          };
         };
 
-        packages.default = craneLib.buildPackage {
-          inherit nativeBuildInputs;
-          inherit buildInputs;
-          inherit env;
-          src = craneLib.cleanCargoSource ./.;
-          strictDeps = true;
-        };
+        packages.default = nixcp;
       }
     );
 }
