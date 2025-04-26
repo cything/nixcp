@@ -57,6 +57,8 @@ impl<'a> Uploader<'a> {
         debug!("moving {} to {}", temp_path, real_path);
         // this is implemented as a copy-and-delete
         s3.rename(&temp_path, &real_path).await?;
+        // set nar url in narinfo
+        nar_info.url = real_path.as_ref();
 
         // upload narinfo
         let narinfo_path = self.path.narinfo_path();

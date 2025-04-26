@@ -86,7 +86,5 @@ impl<'a> MakeNar<'a> {
             file_size: Some(self.file_size),
             url: "",
         })
-        // signature consists of: store_path, nar_hash, nar_size, and references
-        // nar_info.add_signature(self.signing_key);
     }
 }
