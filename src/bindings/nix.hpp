@@ -65,6 +65,7 @@ public:
 	CPathInfo(nix::ref<const nix::ValidPathInfo> pi);
 	std::unique_ptr<std::vector<std::string>> sigs();
 	std::unique_ptr<std::vector<std::string>> references();
+	uint64_t nar_size();
 };
 
 class CNixStore {

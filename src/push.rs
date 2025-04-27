@@ -114,18 +114,22 @@ impl Push {
 
     /// filter paths that are on upstream and send to `tx`
     async fn filter_from_upstream(&'static self, tx: mpsc::Sender<PathInfo>) {
-        let mut handles = Vec::with_capacity(10);
+        let mut handles = Vec::new();
         let store_paths = self.store_paths.read().await.clone();
+        // limit number of inflight requests
+        let inflight_permits = Arc::new(Semaphore::new(32));
 
         for path in store_paths.into_iter() {
             if path.check_upstream_signature(&self.upstream_caches) {
                 debug!("skip {} (signature match)", path.absolute_path());
-                self.signature_hit_count.fetch_add(1, Ordering::Release);
+                self.signature_hit_count.fetch_add(1, Ordering::Relaxed);
                 continue;
             }
             handles.push({
                 let tx = tx.clone();
+                let inflight_permits = inflight_permits.clone();
                 tokio::spawn(async move {
+                    let _permit = inflight_permits.acquire().await.unwrap();
                     if !path
                         .check_upstream_hit(self.upstream_caches.as_slice())
                         .await
@@ -153,24 +157,35 @@ impl Push {
 
     async fn upload(&'static self, mut rx: mpsc::Receiver<PathInfo>) -> Result<()> {
         let mut uploads = Vec::new();
-        let permits = Arc::new(Semaphore::new(10));
-        let big_permits = Arc::new(Semaphore::new(2));
+        let permits = Arc::new(Semaphore::new(16));
+        let big_permits = Arc::new(Semaphore::new(5));
 
         loop {
             let permits = permits.clone();
             let big_permits = big_permits.clone();
 
             if let Some(path_to_upload) = rx.recv().await {
+                debug!("upload permits available: {}", permits.available_permits());
                 let mut permit = permits.acquire_owned().await.unwrap();
 
                 uploads.push(tokio::spawn({
-                    // directory may have many files and end up causing "too many open files"
-                    if PathBuf::from(path_to_upload.absolute_path()).is_dir() {
+                    // a large directory may have many files and end up causing "too many open files"
+                    if PathBuf::from(path_to_upload.absolute_path()).is_dir()
+                        && path_to_upload.nar_size > 5 * 1024 * 1024
+                    {
+                        debug!(
+                            "upload big permits available: {}",
+                            big_permits.available_permits()
+                        );
                         // drop regular permit and take the big one
                         permit = big_permits.acquire_owned().await.unwrap();
                     }
 
-                    println!("uploading: {}", path_to_upload.absolute_path());
+                    println!(
+                        "uploading: {} (size: {})",
+                        path_to_upload.absolute_path(),
+                        path_to_upload.nar_size
+                    );
                     let uploader = Uploader::new(&self.signing_key, path_to_upload)?;
                     let s3 = self.s3.clone();
                     let store = self.store.clone();

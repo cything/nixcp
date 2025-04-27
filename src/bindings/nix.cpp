@@ -57,6 +57,10 @@ void RustSink::eof() {
 
 CPathInfo::CPathInfo(nix::ref<const nix::ValidPathInfo> pi) : pi(pi) {}
 
+uint64_t CPathInfo::nar_size() {
+	return this->pi->narSize;
+}
+
 std::unique_ptr<std::vector<std::string>> CPathInfo::sigs() {
 	std::vector<std::string> result;
 	for (auto&& elem : this->pi->sigs) {

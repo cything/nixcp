@@ -228,6 +228,8 @@ mod ffi {
 
         /// Mid-level wrapper for the `nix::ValidPathInfo` struct.
         type CPathInfo;
+        /// Returns the size of the NAR.
+        fn nar_size(self: Pin<&mut CPathInfo>) -> u64;
 
         /// Returns the references of the store path.
         fn references(self: Pin<&mut CPathInfo>) -> UniquePtr<CxxVector<CxxString>>;

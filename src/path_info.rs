@@ -18,6 +18,7 @@ pub struct PathInfo {
     pub path: StorePath<String>,
     pub signatures: Vec<String>,
     pub references: Vec<StorePath<String>>,
+    pub nar_size: u64,
 }
 
 impl PathInfo {
@@ -90,7 +91,7 @@ impl PathInfo {
             let upstream = upstream
                 .join(self.narinfo_path().as_ref())
                 .expect("adding <hash>.narinfo should make a valid url");
-            debug!("querying {}", upstream);
+            trace!("querying {}", upstream);
             let res_status = reqwest::Client::new()
                 .head(upstream.as_str())
                 .send()

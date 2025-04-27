@@ -69,11 +69,13 @@ impl Store {
                 .map(|x| StorePath::from_bytes(x.as_bytes()))
                 .collect::<Result<_, _>>()
                 .context("get references from pathinfo")?;
+            let nar_size = c_path_info.pin_mut().nar_size();
 
             Ok(PathInfo {
                 path,
                 signatures,
                 references,
+                nar_size,
             })
         })
         .await
