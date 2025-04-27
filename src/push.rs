@@ -10,6 +10,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use futures::future::join_all;
+use humansize::{DECIMAL, format_size};
 use nix_compat::narinfo::{self, SigningKey};
 use object_store::aws::{AmazonS3, AmazonS3Builder};
 use tokio::sync::{RwLock, Semaphore, mpsc};
@@ -157,34 +158,19 @@ impl Push {
 
     async fn upload(&'static self, mut rx: mpsc::Receiver<PathInfo>) -> Result<()> {
         let mut uploads = Vec::new();
-        let permits = Arc::new(Semaphore::new(16));
-        let big_permits = Arc::new(Semaphore::new(5));
+        let permits = Arc::new(Semaphore::new(32));
 
         loop {
             let permits = permits.clone();
-            let big_permits = big_permits.clone();
 
             if let Some(path_to_upload) = rx.recv().await {
-                debug!("upload permits available: {}", permits.available_permits());
-                let mut permit = permits.acquire_owned().await.unwrap();
+                let permit = permits.acquire_owned().await.unwrap();
 
                 uploads.push(tokio::spawn({
-                    // a large directory may have many files and end up causing "too many open files"
-                    if PathBuf::from(path_to_upload.absolute_path()).is_dir()
-                        && path_to_upload.nar_size > 5 * 1024 * 1024
-                    {
-                        debug!(
-                            "upload big permits available: {}",
-                            big_permits.available_permits()
-                        );
-                        // drop regular permit and take the big one
-                        permit = big_permits.acquire_owned().await.unwrap();
-                    }
-
                     println!(
                         "uploading: {} (size: {})",
                         path_to_upload.absolute_path(),
-                        path_to_upload.nar_size
+                        format_size(path_to_upload.nar_size, DECIMAL)
                     );
                     let uploader = Uploader::new(&self.signing_key, path_to_upload)?;
                     let s3 = self.s3.clone();
