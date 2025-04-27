@@ -1,25 +1,20 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_compression::{Level, tokio::bufread::ZstdEncoder};
 use nix_compat::{
     narinfo::{self, NarInfo},
     store_path::StorePath,
 };
 use sha2::{Digest, Sha256};
-use std::mem::take;
-use tempfile::{NamedTempFile, TempPath};
-use tokio::{
-    fs::File,
-    io::{AsyncRead, BufReader},
-    process::Command,
-};
+use std::{mem::take, sync::Arc};
+use tokio::io::{AsyncRead, BufReader};
 use tokio_util::io::InspectReader;
-use tracing::debug;
 
 use crate::path_info::PathInfo;
+use crate::store::Store;
 
 pub struct MakeNar<'a> {
     path_info: &'a PathInfo,
-    nar_file: TempPath,
+    store: Arc<Store>,
     nar_hasher: Sha256,
     /// hash of compressed nar file
     file_hasher: Sha256,
@@ -28,12 +23,10 @@ pub struct MakeNar<'a> {
 }
 
 impl<'a> MakeNar<'a> {
-    pub fn new(path_info: &'a PathInfo) -> Result<Self> {
+    pub fn new(path_info: &'a PathInfo, store: Arc<Store>) -> Result<Self> {
         Ok(Self {
             path_info,
-            nar_file: NamedTempFile::new()
-                .context("create tempfile for nar")?
-                .into_temp_path(),
+            store,
             nar_hasher: Sha256::new(),
             file_hasher: Sha256::new(),
             nar_size: 0,
@@ -41,32 +34,12 @@ impl<'a> MakeNar<'a> {
         })
     }
 
-    pub async fn make(&self) -> Result<()> {
-        let path = self.path_info.absolute_path();
-        let out = std::fs::File::options()
-            .write(true)
-            .truncate(true)
-            .open(&self.nar_file)?;
-
-        debug!("dumping nar for: {}", path);
-        Ok(Command::new("nix")
-            .arg("nar")
-            .arg("pack")
-            .arg(self.path_info.absolute_path())
-            .kill_on_drop(true)
-            .stdout(out)
-            .spawn()?
-            .wait()
-            .await?
-            .exit_ok()?)
-    }
-
     /// Returns a compressed nar reader which can be uploaded. File hash will be available when
     /// everything is read
-    pub async fn compress_and_hash(&mut self) -> Result<impl AsyncRead> {
-        let nar_file = File::open(&self.nar_file).await?;
+    pub fn compress_and_hash(&mut self) -> Result<impl AsyncRead> {
+        let nar_reader = self.store.nar_from_path(self.path_info.path.clone());
         // reader that hashes as nar is read
-        let nar_reader = InspectReader::new(nar_file, |x| {
+        let nar_reader = InspectReader::new(nar_reader, |x| {
             self.nar_size += x.len() as u64;
             self.nar_hasher.update(x);
         });

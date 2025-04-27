@@ -7,7 +7,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{debug, trace};
 use ulid::Ulid;
 
-use crate::{make_nar::MakeNar, path_info::PathInfo};
+use crate::{make_nar::MakeNar, path_info::PathInfo, store::Store};
 
 const CHUNK_SIZE: usize = 1024 * 1024 * 5;
 
@@ -24,9 +24,8 @@ impl<'a> Uploader<'a> {
         Ok(Self { signing_key, path })
     }
 
-    pub async fn upload(&self, s3: Arc<AmazonS3>) -> Result<()> {
-        let mut nar = MakeNar::new(&self.path)?;
-        nar.make().await?;
+    pub async fn upload(&self, s3: Arc<AmazonS3>, store: Arc<Store>) -> Result<()> {
+        let mut nar = MakeNar::new(&self.path, store)?;
 
         // we don't know what the hash of the compressed file will be so upload to a
         // temp location for now
@@ -35,7 +34,7 @@ impl<'a> Uploader<'a> {
         debug!("uploading to temp path: {}", temp_path);
 
         // compress and upload nar
-        let mut file_reader = nar.compress_and_hash().await?;
+        let mut file_reader = nar.compress_and_hash()?;
         loop {
             let mut buf = BytesMut::with_capacity(CHUNK_SIZE);
             let n = file_reader.read_buf(&mut buf).await?;

@@ -23,6 +23,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use anyhow::Result;
+use bytes::Bytes;
 use futures::stream::{Stream, StreamExt};
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
@@ -125,7 +126,7 @@ impl AsyncWriteAdapter {
                     writer.write_all(&v).await?;
                 }
                 Err(e) => {
-                    return Err(e);
+                    return Err(e.into());
                 }
             }
         }
@@ -139,7 +140,7 @@ impl AsyncWriteAdapter {
 }
 
 impl Stream for AsyncWriteAdapter {
-    type Item = Result<Vec<u8>>;
+    type Item = std::io::Result<Bytes>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.receiver.poll_recv(cx) {
@@ -147,9 +148,12 @@ impl Stream for AsyncWriteAdapter {
             Poll::Ready(Some(message)) => {
                 use AsyncWriteMessage::*;
                 match message {
-                    Data(v) => Poll::Ready(Some(Ok(v))),
+                    Data(v) => Poll::Ready(Some(Ok(v.into()))),
                     Error(exception) => {
-                        let error = anyhow::Error::msg(format!("cxx error: {exception}"));
+                        let error = std::io::Error::new(
+                            io::ErrorKind::Other,
+                            format!("cxx error: {exception}"),
+                        );
                         Poll::Ready(Some(Err(error)))
                     }
                     Eof => {
@@ -160,7 +164,7 @@ impl Stream for AsyncWriteAdapter {
             }
             Poll::Ready(None) => {
                 if !self.eof {
-                    Poll::Ready(Some(Err(io::Error::from(io::ErrorKind::BrokenPipe).into())))
+                    Poll::Ready(Some(Err(io::Error::from(io::ErrorKind::BrokenPipe))))
                 } else {
                     Poll::Ready(None)
                 }
@@ -207,6 +211,13 @@ mod ffi {
             include_outputs: bool,
             include_derivers: bool,
         ) -> Result<UniquePtr<CxxVector<CxxString>>>;
+
+        /// Creates a NAR dump from a path.
+        fn nar_from_path(
+            self: Pin<&mut CNixStore>,
+            base_name: Vec<u8>,
+            sender: Box<AsyncWriteSender>,
+        ) -> Result<()>;
 
         /// Obtains a handle to the Nix store.
         fn open_nix_store() -> Result<UniquePtr<CNixStore>>;

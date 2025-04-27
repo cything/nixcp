@@ -169,8 +169,9 @@ impl Push {
 
                 uploads.push(tokio::spawn({
                     let s3 = self.s3.clone();
+                    let store = self.store.clone();
                     async move {
-                        let res = uploader.upload(s3).await;
+                        let res = uploader.upload(s3, store).await;
                         drop(permit);
                         self.upload_count.fetch_add(1, Ordering::Relaxed);
                         res

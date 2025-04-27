@@ -79,6 +79,7 @@ public:
 		bool flip_direction,
 		bool include_outputs,
 		bool include_derivers);
+	void nar_from_path(RVec<unsigned char> base_name, RBox<AsyncWriteSender> sender);
 };
 
 std::unique_ptr<CNixStore> open_nix_store();

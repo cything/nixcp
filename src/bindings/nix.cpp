@@ -108,6 +108,17 @@ std::unique_ptr<std::vector<std::string>> CNixStore::compute_fs_closure(RBasePat
 	return std::make_unique<std::vector<std::string>>(result);
 }
 
+void CNixStore::nar_from_path(RVec<unsigned char> base_name, RBox<AsyncWriteSender> sender) {
+	RustSink sink(std::move(sender));
+
+	std::string_view sv((const char *)base_name.data(), base_name.size());
+	nix::StorePath store_path(sv);
+
+	// exceptions will be thrown into Rust
+	this->store->narFromPath(store_path, sink);
+	sink.eof();
+}
+
 std::unique_ptr<CNixStore> open_nix_store() {
 	return std::make_unique<CNixStore>();
 }
