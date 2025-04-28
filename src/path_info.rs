@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use futures::future::join_all;
 use nix_compat::nixbase32;
 use nix_compat::store_path::StorePath;
@@ -40,6 +40,12 @@ impl PathInfo {
         };
         let derivation = String::from_utf8_lossy(derivation);
         debug!("derivation: {derivation}");
+
+        if derivation.is_empty() {
+            return Err(anyhow!(
+                "nix path-info did not return a derivation for {path:#?}"
+            ));
+        }
 
         let store_path = StorePath::from_absolute_path(derivation.trim().as_bytes())
             .context("storepath from derivation")?;
