@@ -15,10 +15,10 @@ use crate::store::Store;
 pub struct MakeNar<'a> {
     path_info: &'a PathInfo,
     store: Arc<Store>,
-    nar_hasher: Sha256,
+    pub nar_hasher: Sha256,
     /// hash of compressed nar file
     file_hasher: Sha256,
-    nar_size: u64,
+    pub nar_size: u64,
     file_size: u64,
 }
 

@@ -2,10 +2,9 @@ use nixcp::path_info::PathInfo;
 use std::path::PathBuf;
 use std::process::Command;
 
-mod common;
+use crate::common::{HELLO, HELLO_DRV, HELLO_PATH};
 
-const HELLO: &str = "github:nixos/nixpkgs?ref=f771eb401a46846c1aebd20552521b233dd7e18b#hello";
-const HELLO_DRV: &str = "iqbwkm8mjjjlmw6x6ry9rhzin2cp9372-hello-2.12.1.drv";
+mod common;
 
 #[tokio::test]
 async fn path_info_from_package() {
@@ -27,7 +26,7 @@ async fn path_info_from_path() {
         .status()
         .unwrap();
     let ctx = common::context();
-    let path = PathBuf::from("/nix/store/9bwryidal9q3g91cjm6xschfn4ikd82q-hello-2.12.1");
+    let path = PathBuf::from(HELLO_PATH);
     let path_info = PathInfo::from_derivation(&path, &ctx.store)
         .await
         .expect("get pathinfo from package");
