@@ -150,10 +150,7 @@ impl Stream for AsyncWriteAdapter {
                 match message {
                     Data(v) => Poll::Ready(Some(Ok(v.into()))),
                     Error(exception) => {
-                        let error = std::io::Error::new(
-                            io::ErrorKind::Other,
-                            format!("cxx error: {exception}"),
-                        );
+                        let error = std::io::Error::other(format!("cxx error: {exception}"));
                         Poll::Ready(Some(Err(error)))
                     }
                     Eof => {
