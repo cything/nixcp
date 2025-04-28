@@ -158,15 +158,20 @@ impl Push {
 
     async fn upload(&'static self, mut rx: mpsc::Receiver<PathInfo>) -> Result<()> {
         let mut uploads = Vec::new();
-        let permits = Arc::new(Semaphore::new(32));
+        let permits = Arc::new(Semaphore::new(10));
 
         loop {
             let permits = permits.clone();
 
             if let Some(path_to_upload) = rx.recv().await {
-                let permit = permits.acquire_owned().await.unwrap();
-
                 uploads.push(tokio::spawn({
+                    // large uploads will be concurrently uploaded with multipart anyway so don't spawn
+                    // too much of them
+                    let permit = if path_to_upload.nar_size > 15 * 1024 * 1024 {
+                        Some(permits.acquire_owned().await.unwrap())
+                    } else {
+                        None
+                    };
                     println!(
                         "uploading: {} (size: {})",
                         path_to_upload.absolute_path(),
