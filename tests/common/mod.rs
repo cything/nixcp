@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::process::Command;
 use std::sync::Arc;
 
 use nixcp::store::Store;
@@ -14,6 +15,13 @@ pub struct Context {
 
 impl Context {
     fn new() -> Self {
+        // hello must be in the store
+        Command::new("nix")
+            .arg("build")
+            .arg("--no-link")
+            .arg(HELLO)
+            .status()
+            .unwrap();
         let store = Arc::new(Store::connect().expect("connect to nix store"));
         Self { store }
     }
