@@ -22,19 +22,19 @@ pub struct PathInfo {
 }
 
 impl PathInfo {
-    pub async fn from_path(path: &Path, store: &Store) -> Result<Self> {
-        debug!("query path info for {:?}", path);
+    pub async fn from_derivation(drv: &Path, store: &Store) -> Result<Self> {
+        debug!("query path info for {:?}", drv);
 
-        let derivation = match path.extension() {
-            Some(ext) if ext == "drv" => path.as_os_str().as_encoded_bytes(),
+        let derivation = match drv.extension() {
+            Some(ext) if ext == "drv" => drv.as_os_str().as_encoded_bytes(),
             _ => {
                 &Command::new("nix")
                     .arg("path-info")
                     .arg("--derivation")
-                    .arg(path)
+                    .arg(drv)
                     .output()
                     .await
-                    .context(format!("run command: nix path-info --derivaiton {path:?}"))?
+                    .context(format!("run command: nix path-info --derivaiton {drv:?}"))?
                     .stdout
             }
         };
@@ -43,16 +43,20 @@ impl PathInfo {
 
         if derivation.is_empty() {
             return Err(anyhow!(
-                "nix path-info did not return a derivation for {path:#?}"
+                "nix path-info did not return a derivation for {drv:#?}"
             ));
         }
 
-        let store_path = StorePath::from_absolute_path(derivation.trim().as_bytes())
-            .context("storepath from derivation")?;
+        Self::from_path(derivation.trim(), store).await
+    }
+
+    pub async fn from_path(path: &str, store: &Store) -> Result<Self> {
+        let store_path =
+            StorePath::from_absolute_path(path.as_bytes()).context("storepath from path")?;
         store
             .query_path_info(store_path)
             .await
-            .context("query pathinfo for derivation")
+            .context("query pathinfo for path")
     }
 
     pub async fn get_closure(&self, store: &Store) -> Result<Vec<Self>> {

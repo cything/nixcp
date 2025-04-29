@@ -79,7 +79,7 @@ impl Push {
             let store = self.store.clone();
 
             futs.push(tokio::spawn(async move {
-                let path_info = PathInfo::from_path(path.as_path(), &store)
+                let path_info = PathInfo::from_derivation(path.as_path(), &store)
                     .await
                     .context("get path info for path")?;
                 debug!("path-info for {path:?}: {path_info:?}");

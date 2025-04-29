@@ -11,7 +11,7 @@ const HELLO_DRV: &str = "iqbwkm8mjjjlmw6x6ry9rhzin2cp9372-hello-2.12.1.drv";
 async fn path_info_from_package() {
     let ctx = common::context();
     let path = PathBuf::from(HELLO);
-    let path_info = PathInfo::from_path(&path, &ctx.store)
+    let path_info = PathInfo::from_derivation(&path, &ctx.store)
         .await
         .expect("get pathinfo from package");
     assert_eq!(path_info.path.to_string(), HELLO_DRV);
@@ -28,7 +28,7 @@ async fn path_info_from_path() {
         .unwrap();
     let ctx = common::context();
     let path = PathBuf::from("/nix/store/9bwryidal9q3g91cjm6xschfn4ikd82q-hello-2.12.1");
-    let path_info = PathInfo::from_path(&path, &ctx.store)
+    let path_info = PathInfo::from_derivation(&path, &ctx.store)
         .await
         .expect("get pathinfo from package");
     assert_eq!(path_info.path.to_string(), HELLO_DRV);
@@ -38,7 +38,7 @@ async fn path_info_from_path() {
 async fn closure() {
     let ctx = common::context();
     let path = PathBuf::from(HELLO);
-    let path_info = PathInfo::from_path(&path, &ctx.store)
+    let path_info = PathInfo::from_derivation(&path, &ctx.store)
         .await
         .expect("get pathinfo from package");
     let closure = path_info.get_closure(&ctx.store).await.unwrap();
