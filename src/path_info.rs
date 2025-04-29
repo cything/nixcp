@@ -13,7 +13,7 @@ use url::Url;
 
 use crate::store::Store;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathInfo {
     pub path: StorePath<String>,
     pub signatures: Vec<String>,
@@ -59,6 +59,7 @@ impl PathInfo {
             .context("query pathinfo for path")
     }
 
+    // TODO: skip call to query_path_info and return Vec<Path>?
     pub async fn get_closure(&self, store: &Store) -> Result<Vec<Self>> {
         let futs = store
             .compute_fs_closure(self.path.clone())

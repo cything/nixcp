@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs,
     iter::once,
     path::PathBuf,
@@ -21,7 +22,7 @@ use crate::{PushArgs, path_info::PathInfo, store::Store, uploader::Uploader};
 
 pub struct Push {
     upstream_caches: Vec<Url>,
-    store_paths: Arc<RwLock<Vec<PathInfo>>>,
+    store_paths: Arc<RwLock<HashSet<PathInfo>>>,
     signing_key: SigningKey<ed25519_dalek::SigningKey>,
     store: Arc<Store>,
     s3: Arc<AmazonS3>,
@@ -61,7 +62,7 @@ impl Push {
 
         Ok(Self {
             upstream_caches: upstreams,
-            store_paths: Arc::new(RwLock::new(Vec::new())),
+            store_paths: Arc::new(RwLock::new(HashSet::new())),
             signing_key,
             store: Arc::new(store),
             s3: Arc::new(s3_builder.build()?),
