@@ -1,5 +1,5 @@
 use nixcp::path_info::PathInfo;
-use std::path::PathBuf;
+use std::{collections::HashSet, path::PathBuf, process::Command};
 
 use tempfile::TempDir;
 
@@ -44,15 +44,37 @@ async fn path_info_symlink() {
     assert_eq!(path_info.path.to_string(), HELLO_DRV);
 }
 
-/*
 #[tokio::test]
-async fn closure() {
+async fn closure_includes_nix_store_requisites() {
     let ctx = common::context();
     let path = PathBuf::from(HELLO);
     let path_info = PathInfo::from_derivation(&path, &ctx.store)
         .await
         .expect("get pathinfo from package");
-    let closure = path_info.get_closure(&ctx.store).await.unwrap();
-    assert_eq!(closure.len(), 472);
+
+    // get what we think is the closure
+    let closure: HashSet<String> = path_info
+        .get_closure(&ctx.store)
+        .await
+        .unwrap()
+        .iter()
+        .map(|x| x.path.to_absolute_path())
+        .collect();
+
+    // get output of `nix-store --query --requisites --include-outputs`
+    let nix_store_out = Command::new("nix-store")
+        .arg("--query")
+        .arg("--requisites")
+        .arg("--include-outputs")
+        .arg(HELLO_PATH)
+        .output()
+        .unwrap()
+        .stdout;
+    let ref_closure = String::from_utf8_lossy(&nix_store_out);
+    let ref_closure = ref_closure.split_whitespace();
+
+    // check that we didn't miss anything nix-store would catch
+    for path in ref_closure {
+        assert!(closure.contains(path));
+    }
 }
-*/
