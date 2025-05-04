@@ -48,6 +48,8 @@
           ];
           # for cpp bindings to work
           NIX_INCLUDE_PATH = "${lib.getDev pkgs.nix}/include";
+					# skip integration tests (they need a connection to the nix store)
+					cargoTestExtraArgs = "--bins";
         };
 
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
