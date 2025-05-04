@@ -59,7 +59,6 @@
         devShells.default = craneLib.devShell {
           inputsFrom = [ nixcp ];
 
-          RUST_LOG = "nixcp=debug";
           RUST_BACKGRACE = 1;
           # for cpp bindings to work
           NIX_INCLUDE_PATH = "${lib.getDev pkgs.nix}/include";

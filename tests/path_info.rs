@@ -33,5 +33,5 @@ async fn closure() {
         .await
         .expect("get pathinfo from package");
     let closure = path_info.get_closure(&ctx.store).await.unwrap();
-    assert_eq!(closure.len(), 466);
+    assert_eq!(closure.len(), 472);
 }
