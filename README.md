@@ -11,14 +11,13 @@ The signing key is generated with:
 nix-store --generate-binary-cache-key nixcache.cy7.sh cache-priv-key.pem cache-pub-key.pem
 ```
 
-`AWS_ACCESS_KEY_ID` and `AWS_ENDPOINT_URL` environment variables should be set with your s3 credentials.
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables should be set with your s3 credentials.
 
 ```
-Usage: nixcp [OPTIONS] --bucket <bucket name> --signing-key <SIGNING_KEY> <COMMAND>
+Usage: nixcp push [OPTIONS] --bucket <bucket name> --signing-key <SIGNING_KEY> [PATH]...
 
-Commands:
-  push  
-  help  Print this message or the help of the given subcommand(s)
+Arguments:
+  [PATH]...  Path to upload e.g. ./result or /nix/store/y4qpcibkj767szhjb58i2sidmz8m24hb-hello-2.12.1
 
 Options:
       --bucket <bucket name>
@@ -28,15 +27,13 @@ Options:
       --signing-key <SIGNING_KEY>
           Path to the file containing signing key e.g. ~/cache-priv-key.pem
       --region <REGION>
-          If unspecified, will get it form AWS_DEFAULT_REGION envar or the AWS default
+          If unspecified, will get it form AWS_DEFAULT_REGION envar or default to us-east-1
       --endpoint <ENDPOINT>
-          If unspecifed, will get it from AWS_ENDPOINT_URL envar or the AWS default e.g. https://s3.example.com
-      --profile <PROFILE>
-          AWS profile to use
+          If unspecifed, will get it from AWS_ENDPOINT envar e.g. https://s3.example.com
+      --skip-signature-check
+          
   -h, --help
           Print help
-  -V, --version
-          Print version
 ```
 
 ## Install with nix
