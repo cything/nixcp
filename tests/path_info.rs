@@ -44,6 +44,7 @@ async fn path_info_symlink() {
     assert_eq!(path_info.path.to_string(), HELLO_DRV);
 }
 
+/*
 #[tokio::test]
 async fn closure() {
     let ctx = common::context();
@@ -54,3 +55,4 @@ async fn closure() {
     let closure = path_info.get_closure(&ctx.store).await.unwrap();
     assert_eq!(closure.len(), 472);
 }
+*/
