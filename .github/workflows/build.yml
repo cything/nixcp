@@ -1,0 +1,61 @@
+name: build
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+env:
+  TERM: ansi
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets. AWS_SECRET_ACCESS_KEY }}
+  AWS_ENDPOINT: https://s3.cy7.sh
+
+jobs:
+  build-packages:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: setup binary cache key
+        run: echo -n "${{ secrets.NIX_CACHE_SECRET_KEY }}" | xxd -p -r > ${{ runner.temp }}/cache-priv-key.pem
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          enable_kvm: true
+          extra_nix_config: |
+            show-trace = true
+            experimental-features = nix-command flakes
+            secret-key-files = ${{ runner.temp }}/cache-priv-key.pem
+            extra-substituters = https://nixcache.cy7.sh
+            extra-trusted-public-keys = nixcache.cy7.sh:DN3d1dt0wnXfTH03oVmTee4KgmdNdB0NY3SuzA8Fwx8=
+
+      - name: Sync repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - run: nix build -L .
+
+      - name: cache
+        run: |
+          nix run \
+            github:cything/nixcp/test-in-ci -- push \
+            --bucket nixcache \
+            --signing-key ${{ runner.temp }}/cache-priv-key.pem \
+            result
+
+      - name: prepare tarball to upload
+        run: nix run github:nixos/nixpkgs#gnutar hcvf result.tar result
+
+      - name: upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}.tar
+          path: result.tar
+          if-no-files-found: error
