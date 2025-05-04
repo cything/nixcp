@@ -1,0 +1,34 @@
+name: test
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          enable_kvm: true
+          extra_nix_config: |
+            show-trace = true
+            experimental-features = nix-command flakes
+            extra-substituters = https://nixcache.cy7.sh
+            extra-trusted-public-keys = nixcache.cy7.sh:DN3d1dt0wnXfTH03oVmTee4KgmdNdB0NY3SuzA8Fwx8=
+
+      - name: Run tests
+        run: nix develop -c cargo test --verbose
