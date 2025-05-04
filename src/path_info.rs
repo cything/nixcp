@@ -28,6 +28,14 @@ impl PathInfo {
         let derivation = match drv.extension() {
             Some(ext) if ext == "drv" => drv.as_os_str().as_encoded_bytes(),
             _ => {
+                let drv = {
+                    // resolve symlink
+                    if drv.is_symlink() {
+                        &drv.canonicalize()?
+                    } else {
+                        drv
+                    }
+                };
                 &Command::new("nix")
                     .arg("path-info")
                     .arg("--derivation")
