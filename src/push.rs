@@ -1,7 +1,6 @@
 use std::{
     collections::HashSet,
     fs,
-    iter::once,
     path::PathBuf,
     sync::{
         Arc,
@@ -39,11 +38,13 @@ pub struct Push {
 impl Push {
     pub async fn new(cli: &PushArgs, store: Store) -> Result<Self> {
         let mut upstreams = Vec::with_capacity(cli.upstreams.len() + 1);
-        for upstream in cli
-            .upstreams
-            .iter()
-            .chain(once(&"https://cache.nixos.org".to_string()))
-        {
+        if !cli.no_default_upstream {
+            upstreams.push(
+                Url::parse("https://cache.nixos.org")
+                    .expect("default upstream must be a valid url"),
+            );
+        }
+        for upstream in &cli.upstreams {
             upstreams
                 .push(Url::parse(upstream).context(format!("failed to parse {upstream} as url"))?);
         }

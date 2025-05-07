@@ -55,8 +55,9 @@ pub struct PushArgs {
     #[arg(long)]
     endpoint: Option<String>,
 
+    /// Do not include cache.nixos.org as upstream
     #[arg(long)]
-    skip_signature_check: bool,
+    no_default_upstream: bool,
 
     /// Path to upload
     /// e.g. ./result or /nix/store/y4qpcibkj767szhjb58i2sidmz8m24hb-hello-2.12.1

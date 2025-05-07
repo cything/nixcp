@@ -30,8 +30,8 @@ Options:
           If unspecified, will get it form AWS_DEFAULT_REGION envar or default to us-east-1
       --endpoint <ENDPOINT>
           If unspecifed, will get it from AWS_ENDPOINT envar e.g. https://s3.example.com
-      --skip-signature-check
-          
+      --no-default-upstream
+          Do not include cache.nixos.org as upstream
   -h, --help
           Print help
 ```
