@@ -132,10 +132,7 @@ impl Push {
                 let inflight_permits = inflight_permits.clone();
                 tokio::spawn(async move {
                     let _permit = inflight_permits.acquire().await.unwrap();
-                    if !path
-                        .check_upstream_hit(self.upstream_caches.as_slice())
-                        .await
-                    {
+                    if !path.check_upstream_hit(&self.upstream_caches).await {
                         if path.check_if_already_exists(&self.s3).await {
                             debug!("skip {} (already exists)", path.absolute_path());
                             self.already_exists_count.fetch_add(1, Ordering::Relaxed);
