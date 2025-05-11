@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand};
 
 mod bindings;
-mod cli;
 pub mod make_nar;
 pub mod path_info;
 pub mod push;

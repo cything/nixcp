@@ -11,8 +11,15 @@
     };
   };
 
-  outputs = inputs@{ nixpkgs, flake-utils, crane, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    inputs@{
+      nixpkgs,
+      flake-utils,
+      crane,
+      ...
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = import nixpkgs {
           inherit system;
@@ -21,13 +28,12 @@
           ];
         };
         toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-        craneLib = (crane.mkLib pkgs).overrideToolchain(_: toolchain);
+        craneLib = (crane.mkLib pkgs).overrideToolchain (_: toolchain);
         lib = pkgs.lib;
 
         # don't clean cpp files
         cppFilter = path: _type: builtins.match ".*(cpp|hpp)$" path != null;
-        cppOrCargo = path: type:
-          (cppFilter path type) || (craneLib.filterCargoSources path type);
+        cppOrCargo = path: type: (cppFilter path type) || (craneLib.filterCargoSources path type);
         src = lib.cleanSourceWith {
           src = ./.;
           filter = cppOrCargo;
@@ -48,16 +54,38 @@
           ];
           # for cpp bindings to work
           NIX_INCLUDE_PATH = "${lib.getDev pkgs.nix}/include";
-					# skip integration tests (they need a connection to the nix store)
-					cargoTestExtraArgs = "--bins";
+          # skip integration tests (they need a connection to the nix store)
+          cargoTestExtraArgs = "--bins";
         };
 
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-        nixcp = craneLib.buildPackage (commonArgs // {
-          inherit cargoArtifacts;
-        });
+        nixcp = craneLib.buildPackage (
+          commonArgs
+          // {
+            inherit cargoArtifacts;
+          }
+        );
       in
       {
+        checks = {
+          # clippy with all warnings denied
+          clippy = craneLib.cargoClippy (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+            }
+          );
+
+          # check formatting
+          cargoFmt = craneLib.cargoFmt {
+            inherit src;
+          };
+          tomlFmt = craneLib.taploFmt {
+            src = lib.sources.sourceFilesBySuffices src [ ".toml" ];
+          };
+        };
+
         devShells.default = craneLib.devShell {
           inputsFrom = [ nixcp ];
 
@@ -70,6 +98,8 @@
             cargo-udeps
           ];
         };
+
+        formatter = pkgs.nixfmt-rfc-style;
 
         packages.default = nixcp;
       }
