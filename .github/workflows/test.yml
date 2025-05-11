@@ -9,7 +9,16 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-latest # arm64
+          - macos-13 # x86
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Install Nix
