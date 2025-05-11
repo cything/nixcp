@@ -96,6 +96,7 @@
           packages = with pkgs; [
             tokio-console
             cargo-udeps
+            cargo-audit
           ];
         };
 
