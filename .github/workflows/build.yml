@@ -42,7 +42,17 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: nix build -L .
+      - name: cache devshell
+        run: |
+          nix build -L .#devShells.x86_64-linux.default
+          nix run \
+            github:cything/nixcp/test-in-ci -- push \
+            --bucket nixcache \
+            --signing-key ${{ runner.temp }}/cache-priv-key.pem \
+            result
+
+      - name: build
+        run: nix build -L .
 
       - name: cache
         run: |
