@@ -46,7 +46,7 @@ jobs:
         run: |
           nix build -L .#devShells.x86_64-linux.default
           nix run \
-            github:cything/nixcp/test-in-ci -- push \
+            github:cything/nixcp -- push \
             --bucket nixcache \
             --signing-key ${{ runner.temp }}/cache-priv-key.pem \
             result
@@ -57,7 +57,7 @@ jobs:
       - name: cache
         run: |
           nix run \
-            github:cything/nixcp/test-in-ci -- push \
+            github:cything/nixcp -- push \
             --bucket nixcache \
             --signing-key ${{ runner.temp }}/cache-priv-key.pem \
             result
