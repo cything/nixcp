@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, bail};
 use futures::future::join_all;
 use nix_compat::nixbase32;
 use nix_compat::store_path::StorePath;
@@ -50,9 +50,7 @@ impl PathInfo {
         debug!("derivation: {derivation}");
 
         if derivation.is_empty() {
-            return Err(anyhow!(
-                "nix path-info did not return a derivation for {drv:#?}"
-            ));
+            bail!("nix path-info did not return a derivation for {drv:#?}")
         }
 
         Self::from_path(derivation.trim(), store).await

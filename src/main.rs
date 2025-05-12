@@ -1,10 +1,12 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use clap::Parser;
+use tracing::info;
 use tracing_subscriber::{EnvFilter, prelude::*};
 
 use nixcp::push::Push;
 use nixcp::store::Store;
 use nixcp::{Cli, Commands};
+use nixcp::server;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -13,12 +15,22 @@ async fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Push(cli) => {
+            if let Some(stream) = server::connect_to_server().await {
+                info!("connected to the server");
+                match server::ping_pong(stream).await {
+                    Ok(_) => info!("ping pong dance done"),
+                    Err(e) => bail!("failed to ping pong server: {}", e),
+                }
+            }
             let store = Store::connect()?;
             let push = Box::leak(Box::new(Push::new(cli, store).await?));
             push.add_paths(cli.paths.clone())
                 .await
                 .context("add paths to push")?;
             push.run().await.context("nixcp run")?;
+        }
+        Commands::StartServer => {
+            server::run_server().await?;
         }
     }
 

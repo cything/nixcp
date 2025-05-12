@@ -5,6 +5,8 @@ use bincode::{Decode, Encode};
 pub enum Request {
     /// Upload a path
     Upload(Upload),
+    /// Check if a server is active
+    Ping,
 }
 
 /// Server request
@@ -12,6 +14,8 @@ pub enum Request {
 pub enum Response {
     /// Response for `Request::Upload`
     Upload,
+    /// Response for `Request::Ping`
+    Pong,
 }
 
 /// Contents of compile request

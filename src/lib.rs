@@ -7,7 +7,7 @@ pub mod make_nar;
 pub mod path_info;
 mod protocol;
 pub mod push;
-mod server;
+pub mod server;
 pub mod store;
 mod uploader;
 
@@ -29,6 +29,7 @@ pub struct Cli {
 pub enum Commands {
     #[command(arg_required_else_help = true)]
     Push(PushArgs),
+    StartServer,
 }
 
 #[derive(Debug, Args)]
