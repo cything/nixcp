@@ -5,7 +5,9 @@ use clap::{Args, Parser, Subcommand};
 mod bindings;
 pub mod make_nar;
 pub mod path_info;
+mod protocol;
 pub mod push;
+mod server;
 pub mod store;
 mod uploader;
 
