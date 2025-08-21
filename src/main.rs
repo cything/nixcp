@@ -1,10 +1,12 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use tracing_subscriber::{EnvFilter, prelude::*};
+use std::sync::Arc;
 
 use nixcp::push::Push;
 use nixcp::store::Store;
 use nixcp::{Cli, Commands};
+use nixcp::server::{ServerConfig, start_server};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -19,6 +21,11 @@ async fn main() -> Result<()> {
                 .await
                 .context("add paths to push")?;
             push.run().await.context("nixcp run")?;
+        }
+
+        Commands::Serve(cli) => {
+            let server_config = ServerConfig::new(cli).await?;
+            start_server(Arc::new(server_config)).await?;
         }
     }
 

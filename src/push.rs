@@ -12,12 +12,12 @@ use anyhow::{Context, Result};
 use futures::future::join_all;
 use humansize::{DECIMAL, format_size};
 use nix_compat::narinfo::{self, SigningKey};
-use object_store::aws::{AmazonS3, AmazonS3Builder};
+use object_store::aws::AmazonS3;
 use tokio::sync::{RwLock, Semaphore, mpsc};
 use tracing::debug;
 use url::Url;
 
-use crate::{PushArgs, path_info::PathInfo, store::Store, uploader::Uploader};
+use crate::{PushArgs, path_info::PathInfo, store::Store, uploader::Uploader, utils};
 
 pub struct Push {
     upstream_caches: Vec<Url>,
@@ -52,14 +52,11 @@ impl Push {
         let key = fs::read_to_string(&cli.signing_key)?;
         let signing_key = narinfo::parse_keypair(key.as_str())?.0;
 
-        let mut s3_builder = AmazonS3Builder::from_env().with_bucket_name(&cli.bucket);
-
-        if let Some(region) = &cli.region {
-            s3_builder = s3_builder.with_region(region);
-        }
-        if let Some(endpoint) = &cli.endpoint {
-            s3_builder = s3_builder.with_endpoint(endpoint);
-        }
+        let s3_builder = utils::s3_builder_from_cli(
+            &cli.bucket,
+            cli.region.as_deref(),
+            cli.endpoint.as_deref(),
+        );
 
         Ok(Self {
             upstream_caches: upstreams,

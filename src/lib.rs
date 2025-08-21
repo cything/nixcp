@@ -8,6 +8,8 @@ pub mod path_info;
 pub mod push;
 pub mod store;
 mod uploader;
+pub mod server;
+mod utils;
 
 #[derive(Parser, Debug)]
 #[command(version)]
@@ -27,6 +29,8 @@ pub struct Cli {
 pub enum Commands {
     #[command(arg_required_else_help = true)]
     Push(PushArgs),
+
+    Serve(ServeArgs),
 }
 
 #[derive(Debug, Args)]
@@ -62,4 +66,32 @@ pub struct PushArgs {
     /// e.g. ./result or /nix/store/y4qpcibkj767szhjb58i2sidmz8m24hb-hello-2.12.1
     #[arg(value_name = "PATH")]
     pub paths: Vec<PathBuf>,
+}
+
+#[derive(Debug, Args)]
+pub struct ServeArgs {
+    /// The s3 bucket to serve from
+    #[arg(long, value_name = "bucket name")]
+    bucket: String,
+
+    /// If unspecified, will get it form AWS_DEFAULT_REGION envar or default to us-east-1
+    #[arg(long)]
+    region: Option<String>,
+
+    /// If unspecifed, will get it from AWS_ENDPOINT envar
+    /// e.g. https://s3.example.com
+    #[arg(long)]
+    endpoint: Option<String>,
+
+
+    /// The port to listen on
+    #[arg(long, short, default_value_t = 8222)]
+    port: u16,
+
+    /// The host to listen on
+    #[arg(long, default_value_t = String::from("0.0.0.0"))]
+    host: String,
+
+    #[arg(long, default_value_t = 39)]
+    priority: i32,
 }
