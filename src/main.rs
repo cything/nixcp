@@ -1,11 +1,10 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use tracing_subscriber::{EnvFilter, prelude::*};
-use std::sync::Arc;
 
 use nixcp::push::{Push, store::Store};
+use nixcp::server::ServerConfig;
 use nixcp::{Cli, Commands};
-use nixcp::server::{ServerConfig, start_server};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -24,7 +23,7 @@ async fn main() -> Result<()> {
 
         Commands::Serve(cli) => {
             let server_config = ServerConfig::new(cli).await?;
-            start_server(Arc::new(server_config)).await?;
+            server_config.start_server().await?;
         }
     }
 
