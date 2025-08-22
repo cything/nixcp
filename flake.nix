@@ -97,6 +97,7 @@
             tokio-console
             cargo-udeps
             cargo-audit
+            sea-orm-cli
           ];
         };
 
