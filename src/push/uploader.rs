@@ -7,7 +7,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{debug, trace};
 use ulid::Ulid;
 
-use crate::{make_nar::MakeNar, path_info::PathInfo, store::Store};
+use crate::push::{make_nar::MakeNar, path_info::PathInfo, store::Store};
 
 const CHUNK_SIZE: usize = 1024 * 1024 * 5;
 

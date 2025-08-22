@@ -7,7 +7,7 @@ use tokio_util::io::StreamReader;
 
 use crate::{
     bindings::{self, AsyncWriteAdapter},
-    path_info::PathInfo,
+    push::path_info::PathInfo,
 };
 
 pub struct Store {

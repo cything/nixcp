@@ -9,8 +9,7 @@ use std::{mem::take, sync::Arc};
 use tokio::io::{AsyncRead, BufReader};
 use tokio_util::io::InspectReader;
 
-use crate::path_info::PathInfo;
-use crate::store::Store;
+use crate::push::{path_info::PathInfo, store::Store};
 
 pub struct MakeNar<'a> {
     path_info: &'a PathInfo,

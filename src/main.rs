@@ -3,8 +3,7 @@ use clap::Parser;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use std::sync::Arc;
 
-use nixcp::push::Push;
-use nixcp::store::Store;
+use nixcp::push::{Push, store::Store};
 use nixcp::{Cli, Commands};
 use nixcp::server::{ServerConfig, start_server};
 

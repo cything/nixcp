@@ -17,7 +17,13 @@ use tokio::sync::{RwLock, Semaphore, mpsc};
 use tracing::debug;
 use url::Url;
 
-use crate::{PushArgs, path_info::PathInfo, store::Store, uploader::Uploader, utils};
+use crate::push::{path_info::PathInfo, store::Store, uploader::Uploader};
+use crate::{PushArgs, utils};
+
+mod make_nar;
+mod path_info;
+mod uploader;
+pub mod store;
 
 pub struct Push {
     upstream_caches: Vec<Url>,
@@ -52,11 +58,8 @@ impl Push {
         let key = fs::read_to_string(&cli.signing_key)?;
         let signing_key = narinfo::parse_keypair(key.as_str())?.0;
 
-        let s3_builder = utils::s3_builder_from_cli(
-            &cli.bucket,
-            cli.region.as_deref(),
-            cli.endpoint.as_deref(),
-        );
+        let s3_builder =
+            utils::s3_builder_from_cli(&cli.bucket, cli.region.as_deref(), cli.endpoint.as_deref());
 
         Ok(Self {
             upstream_caches: upstreams,

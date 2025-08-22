@@ -11,7 +11,7 @@ use tokio::process::Command;
 use tracing::{debug, trace};
 use url::Url;
 
-use crate::store::Store;
+use crate::push::store::Store;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathInfo {
