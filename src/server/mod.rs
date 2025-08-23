@@ -26,6 +26,7 @@ use url::Url;
 use crate::{ServeArgs, utils};
 
 mod db;
+mod gc;
 
 pub struct ServerConfig {
     s3: AmazonS3,
