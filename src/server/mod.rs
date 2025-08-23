@@ -12,9 +12,15 @@ use axum::{
     routing::get,
 };
 use bytes::Bytes;
-use object_store::{ObjectStore, aws::AmazonS3, path::Path as obj_path, signer::Signer};
+use object_store::{
+    ObjectStore,
+    aws::{AmazonS3, AmazonS3ConfigKey},
+    path::Path as obj_path,
+    signer::Signer,
+};
 use sea_orm::{Database, DatabaseConnection};
 use tokio::net::TcpListener;
+use url::Url;
 
 use crate::{ServeArgs, utils};
 
@@ -27,6 +33,8 @@ pub struct ServerConfig {
     port: u16,
     priority: i32,
     db_conn: DatabaseConnection,
+    endpoint: Url,
+    s3_sign_url: bool,
 }
 
 impl ServerConfig {
@@ -34,12 +42,20 @@ impl ServerConfig {
         let s3_builder =
             utils::s3_builder_from_cli(&cli.bucket, cli.region.as_deref(), cli.endpoint.as_deref());
         let db_conn = Database::connect("sqlite://./db.sqlite?mode=rwc").await?;
+        let endpoint = Url::parse(
+            s3_builder
+                .get_config_value(&AmazonS3ConfigKey::Endpoint)
+                .context("get endpoint config from s3_builder")?
+                .as_str(),
+        )?;
 
         Ok(Self {
             s3: s3_builder.build()?,
             host: cli.host.parse()?,
             port: cli.port,
             priority: cli.priority,
+            s3_sign_url: !cli.s3_no_sign_url,
+            endpoint,
             db_conn,
         })
     }
@@ -97,7 +113,7 @@ async fn get_nar(
     Path(nar): Path<String>,
     State(state): State<ServerConfig>,
 ) -> Result<Redirect, StatusCode> {
-    Ok(Redirect::temporary(
+    let redir_target = if state.s3_sign_url {
         state
             .s3
             .signed_url(
@@ -107,6 +123,15 @@ async fn get_nar(
             )
             .await
             .map_err(|_| StatusCode::NOT_FOUND)?
-            .as_str(),
-    ))
+            .to_string()
+    } else {
+        state
+            .endpoint
+            .join(&format!("nar/{nar}"))
+            .context("join nar path into endpoint")
+            .unwrap()
+            .to_string()
+    };
+
+    Ok(Redirect::temporary(&redir_target))
 }

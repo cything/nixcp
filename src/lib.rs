@@ -79,7 +79,6 @@ pub struct ServeArgs {
     #[arg(long)]
     endpoint: Option<String>,
 
-
     /// The port to listen on
     #[arg(long, short, default_value_t = 8222)]
     port: u16,
@@ -88,6 +87,13 @@ pub struct ServeArgs {
     #[arg(long, default_value_t = String::from("0.0.0.0"))]
     host: String,
 
+    /// Priority specified in nix-cache-info. `cache.nixos.org` uses 40. Clients try lower priority
+    /// caches first.
     #[arg(long, default_value_t = 39)]
     priority: i32,
+
+    /// Don't sign URLs when redirecting to the s3 endpoint. Use this if your s3 bucket is public
+    /// anyway.
+    #[arg(long)]
+    s3_no_sign_url: bool,
 }
