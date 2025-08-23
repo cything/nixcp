@@ -100,6 +100,9 @@ pub struct ServeArgs {
     /// anyway.
     #[arg(long)]
     s3_no_sign_url: bool,
+
+    #[arg(long)]
+    admin_key_hash: String,
 }
 
 #[derive(Debug, Args)]
