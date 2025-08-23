@@ -5,6 +5,7 @@ use clap::{Args, Parser, Subcommand};
 mod bindings;
 pub mod push;
 pub mod server;
+pub mod hash;
 mod utils;
 
 #[derive(Parser, Debug)]
@@ -26,13 +27,16 @@ pub enum Commands {
     #[command(arg_required_else_help = true)]
     Push(PushArgs),
 
+    #[command(arg_required_else_help = true)]
     Serve(ServeArgs),
+
+    Hash(HashArgs),
 }
 
 #[derive(Debug, Args)]
 pub struct PushArgs {
     /// The s3 bucket to upload to
-    #[arg(long, value_name = "bucket name")]
+    #[arg(long)]
     bucket: String,
 
     /// Upstream cache to check against. Can be specified multiple times.
@@ -67,7 +71,7 @@ pub struct PushArgs {
 #[derive(Debug, Args)]
 pub struct ServeArgs {
     /// The s3 bucket to serve from
-    #[arg(long, value_name = "bucket name")]
+    #[arg(long)]
     bucket: String,
 
     /// If unspecified, will get it form AWS_DEFAULT_REGION envar or default to us-east-1
@@ -96,4 +100,19 @@ pub struct ServeArgs {
     /// anyway.
     #[arg(long)]
     s3_no_sign_url: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct HashArgs {
+    /// Skip the password confirmation prompt
+    #[arg(long)]
+    no_confirm: bool,
+
+    /// Supply the password via command line instead of using the terminal prompt
+    #[arg(long)]
+    password: Option<String>,
+
+    /// Generate a random 32-character alphanumeric password.
+    #[arg(long)]
+    random: bool,
 }

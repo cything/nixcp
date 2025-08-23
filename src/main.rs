@@ -5,6 +5,7 @@ use tracing_subscriber::{EnvFilter, prelude::*};
 use nixcp::push::{Push, store::Store};
 use nixcp::server::ServerConfig;
 use nixcp::{Cli, Commands};
+use nixcp::hash;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -24,6 +25,10 @@ async fn main() -> Result<()> {
         Commands::Serve(cli) => {
             let server_config = ServerConfig::new(cli).await?;
             server_config.start_server().await?;
+        }
+
+        Commands::Hash(cli) => {
+            hash::run(&cli)?;
         }
     }
 
