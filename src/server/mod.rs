@@ -1,6 +1,7 @@
 use std::{
     net::{IpAddr, SocketAddr},
     time::Duration,
+    sync::Arc,
 };
 
 use anyhow::{Context, Result};
@@ -26,7 +27,6 @@ use crate::{ServeArgs, utils};
 
 mod db;
 
-#[derive(Clone)]
 pub struct ServerConfig {
     s3: AmazonS3,
     host: IpAddr,
@@ -36,6 +36,8 @@ pub struct ServerConfig {
     endpoint: Url,
     s3_sign_url: bool,
 }
+
+type ServerState = State<Arc<ServerConfig>>;
 
 impl ServerConfig {
     pub async fn new(cli: &ServeArgs) -> Result<Self> {
@@ -72,7 +74,7 @@ impl ServerConfig {
             .route("/nix-cache-info", get(get_nix_cache_info))
             .route("/{hash}.narinfo", get(get_narinfo))
             .route("/nar/{nar}", get(get_nar))
-            .with_state(self);
+            .with_state(Arc::new(self));
 
         axum::serve(listener, app).await.context("axum serve")?;
         Ok(())
@@ -83,7 +85,7 @@ async fn get_root() -> &'static str {
     "nixcp <3"
 }
 
-async fn get_nix_cache_info(State(state): State<ServerConfig>) -> String {
+async fn get_nix_cache_info(State(state): ServerState) -> String {
     let mut res = String::from("StoreDir: /nix/store\nWantMassQuery: 1");
     res.push_str(&format!("\nPriority: {}", state.priority));
     res
@@ -91,7 +93,7 @@ async fn get_nix_cache_info(State(state): State<ServerConfig>) -> String {
 
 async fn get_narinfo(
     Path(hash): Path<String>,
-    State(state): State<ServerConfig>,
+    State(state): ServerState,
 ) -> Result<Bytes, StatusCode> {
     let narinfo_data = state
         .s3
@@ -111,7 +113,7 @@ async fn get_narinfo(
 
 async fn get_nar(
     Path(nar): Path<String>,
-    State(state): State<ServerConfig>,
+    State(state): ServerState,
 ) -> Result<Redirect, StatusCode> {
     let redir_target = if state.s3_sign_url {
         state
