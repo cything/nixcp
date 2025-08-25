@@ -6,6 +6,7 @@ mod bindings;
 pub mod push;
 pub mod server;
 pub mod hash;
+pub mod gc;
 mod utils;
 
 #[derive(Parser, Debug)]
@@ -31,6 +32,9 @@ pub enum Commands {
     Serve(ServeArgs),
 
     Hash(HashArgs),
+
+    #[command(arg_required_else_help = true)]
+    Gc(GcArgs),
 }
 
 #[derive(Debug, Args)]
@@ -118,4 +122,17 @@ pub struct HashArgs {
     /// Generate a random 32-character alphanumeric password.
     #[arg(long)]
     random: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct GcArgs {
+    /// URL where the nixcp server is hosted
+    #[arg(long, short = 's')]
+    server: String,
+
+    #[arg(long, short = 'k')]
+    admin_key: String,
+
+    #[arg(long, short =  'd')]
+    duration: String,
 }

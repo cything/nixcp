@@ -6,6 +6,7 @@ use nixcp::push::{Push, store::Store};
 use nixcp::server::ServerConfig;
 use nixcp::{Cli, Commands};
 use nixcp::hash;
+use nixcp::gc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -29,6 +30,10 @@ async fn main() -> Result<()> {
 
         Commands::Hash(cli) => {
             hash::run(&cli)?;
+        }
+
+        Commands::Gc(cli) => {
+            gc::start(cli).await?;
         }
     }
 

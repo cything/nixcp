@@ -1937,6 +1937,7 @@ dependencies = [
  "ed25519-dalek",
  "futures",
  "humansize",
+ "humantime",
  "nix-compat",
  "object_store",
  "pkg-config",

@@ -17,7 +17,7 @@ use url::Url;
 
 use crate::{ServeArgs, utils};
 
-mod api;
+pub mod api;
 mod db;
 mod gc;
 

@@ -16,8 +16,8 @@ use crate::server::{ServerState, db, gc};
 
 #[derive(Serialize, Deserialize)]
 pub struct StartGcReq {
-    cutoff: i64,
-    admin_key: String,
+    pub cutoff: i64,
+    pub admin_key: String,
 }
 
 pub async fn get_root() -> &'static str {
