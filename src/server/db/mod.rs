@@ -3,6 +3,7 @@ use entity::nar_last_access;
 use sea_orm::*;
 use sea_orm_migration::MigratorTrait;
 use time::UtcDateTime;
+use tracing::debug;
 
 mod entity;
 mod migration;
@@ -35,6 +36,7 @@ pub async fn update_narinfo_last_access(db: &DatabaseConnection, hash: &str) -> 
         let mut narinfo: nar_last_access::ActiveModel = narinfo.into();
         narinfo.last_accessed = Set(now_timestamp);
         narinfo.update(db).await?;
+        debug!("update access time to {} for {}.narinfo", now_timestamp, hash);
     } else {
         let narinfo = nar_last_access::ActiveModel {
             nar_hash: Set(hash.to_string()),
@@ -42,6 +44,7 @@ pub async fn update_narinfo_last_access(db: &DatabaseConnection, hash: &str) -> 
             ..Default::default()
         };
         narinfo.insert(db).await?;
+        debug!("new access time {} for {}.narinfo", now_timestamp, hash);
     }
     Ok(())
 }

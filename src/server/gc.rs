@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 use anyhow::{Context, Result};
 use futures::StreamExt;
 use nix_compat::narinfo::NarInfo;
 use object_store::{ObjectMeta, ObjectStore};
-use std::sync::Arc;
+use tracing::debug;
 
 use crate::server::{ServerConfig, db};
 
@@ -15,12 +17,13 @@ pub async fn run(config: Arc<ServerConfig>, cutoff: i64) -> Result<()> {
         if !is_object_narinfo(&meta) {
             continue;
         };
+        debug!("checking {}", &meta.location);
 
         let nar_hash = meta
             .location
             .as_ref()
             .strip_suffix(".narinfo")
-            .expect("suffix mut exist cause we just confirmed it's a narinfo");
+            .expect("suffix must exist cause we just confirmed it's a narinfo");
         let last_access = db::get_narinfo_last_access(&config.db_conn, nar_hash)
             .await
             .unwrap_or_else(|_| meta.last_modified.timestamp());

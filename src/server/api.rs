@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use argon2::{Argon2, PasswordVerifier};
 use axum::{
     Json,
     extract::{Path, State},
@@ -17,7 +16,11 @@ use crate::server::{ServerState, db, gc};
 #[derive(Serialize, Deserialize)]
 pub struct StartGcReq {
     pub cutoff: i64,
-    pub admin_key: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct StartGcRes {
+    pub run_id: i64,
 }
 
 pub async fn get_root() -> &'static str {
@@ -81,13 +84,6 @@ pub async fn start_gc(
     State(state): ServerState,
     Json(start_gc_req): Json<StartGcReq>,
 ) -> Result<(), StatusCode> {
-    Argon2::default()
-        .verify_password(
-            start_gc_req.admin_key.as_bytes(),
-            &state.admin_key_hash.password_hash(),
-        )
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
-
     tokio::task::spawn(gc::run(state, start_gc_req.cutoff));
     Ok(())
 }

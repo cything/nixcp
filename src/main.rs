@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
         }
 
         Commands::Hash(cli) => {
-            hash::run(&cli)?;
+            hash::run(cli)?;
         }
 
         Commands::Gc(cli) => {
